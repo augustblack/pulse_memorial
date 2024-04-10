@@ -1,0 +1,32 @@
+<html>
+				<head>
+								<meta charset="UTF-8">
+								<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+								<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.2.3/adapter.min.js"></script>
+								<script text="javascript" src="janus.js"></script>
+								<style>
+button {
+				padding: 1em;
+				font-size: 1em;
+}
+								</style>
+				</head>
+				<body>
+								<audio controls id="audio" ></audio>
+								<div style="padding:1em">
+												<button onclick="init(1)">1</button>
+												<button onclick="init(2)">2</button>
+												<button onclick="init(3)">3</button>
+												<button onclick="init(4)">4</button>
+												<!--
+												<button onclick="init(5)">5</button>
+												<button onclick="init(6)">6</button>
+												<button onclick="init(7)">7</button>
+												<button onclick="init(8)">8</button>
+												<button onclick="init(9)">9</button>
+												-->
+								</div>
+								<script text="javascript" src="streaming.js"></script>
+				</body>
+</html>
