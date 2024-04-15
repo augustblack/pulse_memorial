@@ -1,0 +1,14 @@
+name = "pulse-server"
+compatibility_date = "2022-07-19"
+main = "src/index.ts"
+
+[durable_objects]
+bindings = [{name = "PULSE_SERVER", class_name = "PulseServer"}]
+
+[[migrations]]
+tag = "v1" # Should be unique for each entry
+new_classes = ["PulseServer"]
+
+[site]
+bucket = "./assets"
+

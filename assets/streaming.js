@@ -1,58 +1,41 @@
 var janus = null
 var streaming = null
-var opaqueId = "streamingtest-" + Janus.randomString(12)
+var opaqueId = 'pulse-' + Janus.randomString(12)
 
-var server = 'wss://pulse.listen.center/ws'
+var server = 'wss://nyc.listen.center/ws'
 var iceServers = [
-	{ "urls": "stun:stun.l.google.com:19302" },
-	{ "urls": "turn:nyc-turn.listen.center:443", "username": "no", "credential": "miras" },
-	{ "urls": "turn:nyc-turn.listen.center:443?transport=tcp", "username": "no", "credential": "miras" }
+	{ 'urls': 'stun:stun.l.google.com:19302' },
+	{ 'urls': 'turn:nyc-turn.listen.center:443', 'username': 'no', 'credential': 'miras' },
+	{ 'urls': 'turn:nyc-turn.listen.center:443?transport=tcp', 'username': 'no', 'credential': 'miras' }
 ]
-function checkTURNServer(turnConfig, timeout) {
-
-	return new Promise(function(resolve, reject) {
-
-		setTimeout(function() {
-			if (promiseResolved) return
-			resolve(false);
-			promiseResolved = true;
-			console.log('wtf timeout')
-		}, timeout || 5000);
-
-		var promiseResolved = false
-			, myPeerConnection = window.RTCPeerConnection
-			, pc = new myPeerConnection({ iceServers: [turnConfig] })
-		pc.createDataChannel("")   //create a bogus data channel
-		pc.createOffer()
-			.then((sdp) => {
-				if (sdp.sdp.indexOf('typ relay') > -1) { // sometimes sdp contains the ice candidates...
-					console.log('wtf')
-					promiseResolved = true
-					resolve(true)
-				}
-				return pc.setLocalDescription(sdp)
-			})    // create offer and set local description
-			.catch(reject)
-		pc.onicecandidate = function(ice) {  //listen for candidate events
-			if (promiseResolved || !ice || !ice.candidate || !ice.candidate.candidate || !(ice.candidate.candidate.indexOf('typ relay') > -1)) return
-			promiseResolved = true
-			console.log('wtf ice candidadte', ice)
-			resolve(true)
-		}
-	})
-}
 
 var stream = null
 
 console.log('iceServers', iceServers)
 
+function playAudio() {
+	var a = document.getElementById('audio')
+	if (a && a.readyState >= 3 && a.paused === true) {
+		console.log('playing')
+		a.play()
+			.then(() => {
+				var playButton = document.getElementById('playButton')
+				if (playButton) {
+					playButton.classList.add('pulsingButton')
+					playButton.innerHTML = ''
+				}
+			})
+			.catch(console.error)
+	}
+}
+
 let wakeLock = null
 function toggleFullScreen() {
 	if (!document.fullscreenElement) {
-		if ("documentElement" in document && "requestFullscreen" in document.documentElement) {
+		if ('documentElement' in document && 'requestFullscreen' in document.documentElement) {
 			document.documentElement.requestFullscreen()
-			if ("wakeLock" in navigator) {
-				navigator.wakeLock.request("screen")
+			if ('wakeLock' in navigator) {
+				navigator.wakeLock.request('screen')
 					.then(wl => {
 						wakeLock = wl
 					})
@@ -60,7 +43,7 @@ function toggleFullScreen() {
 			}
 		}
 	} else if (document.exitFullscreen) {
-		if ("exitFullscreen" in document) {
+		if ('exitFullscreen' in document) {
 			document.exitFullscreen()
 			if (wakeLock) {
 				wakeLock.release().then(() => {
@@ -72,8 +55,9 @@ function toggleFullScreen() {
 }
 
 function logLocal(msg) {
-	var logdiv = document.getElementById('log')
-	logdiv.innerHTML += `<div>${msg}</div>`
+	console.log(msg)
+	// var logdiv = document.getElementById('log')
+	// logdiv.innerHTML += `<div>${msg}</div>`
 }
 function errLocal(msg) {
 	var logdiv = document.getElementById('log')
@@ -85,13 +69,13 @@ function errLocal(msg) {
 function init(id) {
 	toggleFullScreen()
 	if (!Janus || !Janus.isWebrtcSupported()) {
-		window.alert("No WebRTC support... ")
-		return;
+		window.alert('No WebRTC support... ')
+		return
 	}
 
 	// Initialize the library (all console debuggers enabled)
 	Janus.init({
-		debug: "all",
+		debug: 'all',
 		callback: function() {
 			janus = new Janus(
 				{
@@ -99,56 +83,60 @@ function init(id) {
 					iceServers: iceServers,
 					success: function() {
 						janus.attach({
-							plugin: "janus.plugin.streaming",
+							plugin: 'janus.plugin.streaming',
 							opaqueId: opaqueId,
 							success: function(pluginHandle) {
 								streaming = pluginHandle
-								Janus.log("Plugin attached! (" + streaming.getPlugin() + ", id=" + streaming.getId() + ")")
-								var body = { request: "watch", id }
+								Janus.log('Plugin attached! (' + streaming.getPlugin() + ', id=' + streaming.getId() + ')')
+								var body = { request: 'watch', id }
 								streaming.send({ message: body })
 							},
 							error: function(error) {
-								Janus.error("  -- Error attaching plugin... ", error);
+								Janus.error('  -- Error attaching plugin... ', error)
 							},
 							iceState: function(state) {
 								// Janus.log("ICE state changed to " + state)
-								logLocal("ICE state changed to " + state)
+								logLocal('ICE state changed to ' + state)
 							},
 							webrtcState: function(on) {
 								// Janus.log("Janus says our WebRTC PeerConnection is " + (on ? "up" : "down") + " now")
-								logLocal("Janus says our WebRTC PeerConnection is " + (on ? "up" : "down") + " now")
-								if (on === 'up') {
-
+								logLocal('Janus says our WebRTC PeerConnection is ' + (on ? 'up' : 'down') + ' now')
+								var playButton = document.getElementById('playButton')
+								if (playButton) {
+									if (on) {
+										playButton.innerHTML = 'play'
+										playButton.addEventListener('click', playAudio)
+									} else {
+										playButton.classList.remove('pulsingButton')
+										playButton.removeEventListener('click', playAudio)
+									}
 								}
 							},
 							slowLink: function(uplink, lost, mid) {
-								Janus.warn("Janus reports problems " + (uplink ? "sending" : "receiving") +
-									" packets on mid " + mid + " (" + lost + " lost packets)");
+								Janus.warn('Janus reports problems ' + (uplink ? 'sending' : 'receiving') +
+									' packets on mid ' + mid + ' (' + lost + ' lost packets)')
 							},
 							onmessage: function(msg, jsep) {
-								Janus.debug(" ::: Got a message :::", msg)
-								var result = msg["result"]
+								Janus.debug(' ::: Got a message :::', msg)
+								var result = msg['result']
 								if (result) {
-									if (result["status"]) {
-										var status = result["status"]
-										if (status === 'starting')
-											Janus.log("Starting, please wait...")
-										else if (status === 'started')
-											Janus.log("Started")
-										else if (status === 'stopped')
-											stopStream()
-									} else if (msg["streaming"] === "event") {
+									if (result['status']) {
+										var status = result['status']
+										if (status === 'starting') { Janus.log('Starting, please wait...') }
+										else if (status === 'started') { Janus.log('Started') }
+										else if (status === 'stopped') { stopStream() }
+									} else if (msg['streaming'] === 'event') {
 										// no need to do anything
 									}
-								} else if (msg["error"]) {
-									Janus.log("Error, stopping stream...")
+								} else if (msg['error']) {
+									Janus.log('Error, stopping stream...')
 									stopStream()
 									return
 								}
 								if (jsep) {
-									Janus.log("Handling SDP as well...", jsep)
+									Janus.log('Handling SDP as well...', jsep)
 									var stereo = true // (jsep.sdp.indexOf("stereo=1") !== -1)
-									Janus.log("Got stereo? " + stereo)
+									Janus.log('Got stereo? ' + stereo)
 									// Offer from the plugin, let's answer
 									streaming.createAnswer(
 										{
@@ -161,29 +149,29 @@ function init(id) {
 											//		{ type: 'data' }
 											//	],
 											customizeSdp: function(jsep) {
-												if (stereo && jsep.sdp.indexOf("stereo=1") == -1) {
+												if (stereo && jsep.sdp.indexOf('stereo=1') == -1) {
 													// Make sure that our offer contains stereo too
-													jsep.sdp = jsep.sdp.replace("useinbandfec=1", "useinbandfec=1;stereo=1");
+													jsep.sdp = jsep.sdp.replace('useinbandfec=1', 'useinbandfec=1;stereo=1')
 													console.log('modifying for stereo!', jsep)
 												}
 											},
 											success: function(jsep) {
-												Janus.log("Got SDP!", jsep)
-												var body = { request: "start" };
-												streaming.send({ message: body, jsep: jsep });
-												Janus.log("sending jsep")
+												Janus.log('Got SDP!', jsep)
+												var body = { request: 'start' }
+												streaming.send({ message: body, jsep: jsep })
+												Janus.log('sending jsep')
 											},
 											error: function(error) {
-												Janus.error("WebRTC error:", error);
+												Janus.error('WebRTC error:', error)
 											}
-										});
+										})
 								}
 							},
 							onremotetrack: function(track, mid, on, metadata) {
 								logLocal(
-									"Remote track (mid=" + mid + ") " +
-									(on ? "added" : "removed") +
-									(metadata ? " (" + metadata.reason + ") " : "") + ":", track
+									'Remote track (mid=' + mid + ') ' +
+									(on ? 'added' : 'removed') +
+									(metadata ? ' (' + metadata.reason + ') ' : '') + ':', track
 								)
 								if (!on) {
 									logLocal('setting stream to null')
@@ -191,54 +179,43 @@ function init(id) {
 								}
 								// If we're here, a new track was added
 								// $('#spinner' + mid).remove();
-								if (on && track.kind === "audio" && stream === null) {
+								if (on && track.kind === 'audio' && stream === null) {
 									// New audio track: create a stream out of it, and use a hidden <audio> element
 									stream = new MediaStream([track])
 									// Janus.log("Created remote audio stream:", stream);
-									logLocal("Created remote audio stream")
+									logLocal('Created remote audio stream')
 									var a = document.getElementById('audio')
-
 									if (a) {
-										a.style.display = 'block'
-										a.style.visibility = 'visible'
-
 										try {
 											a.srcObject = stream
-											a.play()
-												.then(() => logLocal("Created remote audio stream"))
-												.catch(e => errLocal(e))
 										} catch (e) {
 											try {
-												alert('cannot set srcObject')
 												a.src = URL.createObjectURL(stream)
 											} catch (e) {
-												Janus.error("Error attaching stream to element", e)
+												Janus.error('Error attaching stream to element', e)
 											}
 										}
-									} else {
-										alert('No audio element')
 									}
-
 								} else {
-									Janus.log("Got video, but should not have.", stream);
+									Janus.log('Got video, but should not have.', stream)
 								}
 							},
 							ondataopen: function(label, protocol) {
-								Janus.log("The DataChannel is available!");
+								Janus.log('The DataChannel is available!')
 							},
 							ondata: function(data) {
-								Janus.log("We got data from the DataChannel!", data);
+								Janus.log('We got data from the DataChannel!', data)
 							},
 							oncleanup: function() {
-								Janus.log(" ::: Got a cleanup notification :::");
+								Janus.log(' ::: Got a cleanup notification :::')
 							}
 						})
 					},
 					error: function(error) {
-						Janus.log("got main error", error);
+						Janus.log('got main error', error)
 					},
 					destroyed: function() {
-						window.location.reload();
+						window.location.reload()
 					}
 				})
 		}
@@ -246,37 +223,80 @@ function init(id) {
 }
 
 
-function getStreamInfo() {
-	var body = { request: "info", id: 1 }
-	streaming.send({
-		message: body, success: function(result) {
-			if (result && result.info && result.info.metadata) {
-				Janus.log(escapeXmlTags(result.info.metadata))
+function stopStream() {
+	var body = { request: 'stop' }
+	streaming.send({ message: body })
+	streaming.hangup()
+}
+let ws
+
+function websocket(url) {
+	console.log('url', url)
+	ws = new WebSocket(url)
+
+	if (!ws) {
+		throw new Error('server didn\'t accept ws')
+	}
+
+	ws.addEventListener('open', () => {
+		console.log('Opened websocket')
+	})
+
+	ws.addEventListener('message', ({ data }) => {
+		try {
+			var msg = JSON.parse(data)
+			console.log('msg', msg)
+			if ('streamId' in msg) {
+				logLocal('streamId:' + msg.streamId)
+				var playButton = document.getElementById('playButton')
+				if (playButton) {
+					init(msg.streamId)
+				}
 			}
+			if ('participantCount' in msg) {
+				var pc = document.getElementById('participantCount')
+				if (pc) {
+					pc.innerHTML = msg.participantCount
+				}
+			}
+		} catch (error) {
+			console.log('msg decode error:', error)
 		}
+	})
+
+	ws.addEventListener('close', () => {
+		console.log('Closed websocket')
+	})
+
+	ws.addEventListener('close', () => {
+		console.log('Closed websocket')
 	})
 }
 
-function stopStream() {
-	var body = { request: "stop" };
-	streaming.send({ message: body });
-	streaming.hangup();
-}
+var url = new URL(window.location)
+url.protocol = url.protocol === 'https:' ? 'wss' : 'ws'
+url.pathname = `/ws/4/${opaqueId}`
+console.log('url', url.href)
+websocket(url.href)
 
-// Helper to escape XML tags
-function escapeXmlTags(value) {
-	if (value) {
-		var escapedValue = value.replace(new RegExp('<', 'g'), '&lt');
-		escapedValue = escapedValue.replace(new RegExp('>', 'g'), '&gt');
-		return escapedValue;
+function setButton() {
+	var playButton = document.getElementById('playButton')
+	if (playButton) {
+		playButton.style.width = window.innerHeight * 0.4 + 'px'
+		playButton.style.height = window.innerHeight * 0.4 + 'px'
+		playButton.style.fontSize = window.innerHeight * 0.1 + 'px'
 	}
 }
 
-checkTURNServer({
-	urls: "turn:nyc-turn.listen.center:443?transport=tcp",
-	"username": "no",
-	"credential": "miras"
-}).then(function(bool) {
-	console.log('is TURN server active? ', bool ? 'yes' : 'no');
-}).catch(console.error)
+window.addEventListener('resize', setButton)
+setButton()
 
+/*
+checkTURNServer({
+	urls: 'turn:nyc-turn.listen.center:443?transport=tcp',
+	'username': 'no',
+	'credential': 'miras'
+}).then(function(bool) {
+	console.log('is TURN server active? ', bool ? 'yes' : 'no')
+}).catch(console.error)
+*/

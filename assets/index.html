@@ -1,31 +1,100 @@
 <html>
-				<head>
-								<meta charset="UTF-8">
-								<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-								<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.2.3/adapter.min.js"></script>
-								<script text="javascript" src="janus.js"></script>
-								<style>
-button {
-				padding: 1em;
-				font-size: 1em;
-}
-								</style>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.2.3/adapter.min.js"></script>
+		<script text="javascript" src="janus.js"></script>
+		<style>
+    body {
+      position: relative;
+      padding: 0px;
+      margin: 0px;
+      background: pink;
+    }
+    #participantCount {
+    	display:fixed;
+    	left: 0.2em;
+    	top: 0.2em;
+    	bakground: blue;
+    }
+    #container {
+      position: absolute;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      justify-content: center;
+      align-items: center;
+    }
+    #playButton {
+      font-size: 4em;
+      letter-spacing: .2rem;
+      background: red;
+      border-width: 0px;
+      border-color: rgba(255,0,0, 0.6);
+      border-radius: 50%;
+      color: rgba(0,0,0, 1);
+      justify-content: center;
+      align-items: center;
+      margin: 0px;
+      cursor: pointer ;
+      transition: all 0.5s ease-out;
+    }
+
+    .pulsingButton {
+  		text-align: center;
+  		white-space: nowrap;
+  		display: block;
+  		margin: 50px auto;
+  		padding: 10px;
+  		box-shadow: 0 0 0 0 rgba(232, 76, 61, 0.7);
+  		border-radius: 10px;
+  		background-color: #FF0000;
+  		-webkit-animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+  		-moz-animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+  		-ms-animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+  		animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+  		font-size: 22px;
+  		font-weight: normal;
+  		font-family: sans-serif;
+  		text-decoration: none !important;
+  		color: #ffffff;
+  		transition: all 300ms ease-in-out;
+		}
+
+
+		/* Animation */
+
+		@-webkit-keyframes pulsing {
+  	to {
+    	box-shadow: 0 0 0 30px rgba(232, 76, 61, 0);
+  	}
+		}
+
+		@-moz-keyframes pulsing {
+  	to {
+    	box-shadow: 0 0 0 30px rgba(232, 76, 61, 0);
+  	}
+		}
+
+		@-ms-keyframes pulsing {
+  	to {
+    	box-shadow: 0 0 0 30px rgba(232, 76, 61, 0);
+  	}
+		}
+
+		@keyframes pulsing {
+  	to {
+    	box-shadow: 0 0 0 30px rgba(232, 76, 61, 0);
+  	}
+		}
+		</style>
 				</head>
 				<body>
-								<audio controls id="audio" style="visibility:hidden;display:none;"></audio>
-								<div style="padding:1em">
-												<button onclick="init(1)">1</button>
-												<button onclick="init(2)">2</button>
-												<button onclick="init(3)">3</button>
-												<button onclick="init(4)">4</button>
-												<!--
-												<button onclick="init(5)">5</button>
-												<button onclick="init(6)">6</button>
-												<button onclick="init(7)">7</button>
-												<button onclick="init(8)">8</button>
-												<button onclick="init(9)">9</button>
-												-->
+								<audio id="audio" style="visibility:hidden;display:none;"></audio>
+								<div id="participantCount"></div>
+								<div id="container">
+												<button id="playButton">loading</button>
 								</div>
 								<div id="log"></div>
 								<script text="javascript" src="streaming.js"></script>
