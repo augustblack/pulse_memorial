@@ -1,36 +1,85 @@
-/* global iceServers:readonly, Janus:readonly, server:readonly */
-
 var janus = null
 var streaming = null
 var opaqueId = "streamingtest-" + Janus.randomString(12)
 
-var remoteTracks = {}
-
-var streamsList = {}
-var selectedStream = null
-
 var server = 'wss://pulse.listen.center/ws'
-var iceServers = null
+var iceServers = [
+	{ "urls": "stun:stun.l.google.com:19302" },
+	{ "urls": "turn:nyc-turn.listen.center:443", "username": "no", "credential": "miras" },
+	{ "urls": "turn:nyc-turn.listen.center:443?transport=tcp", "username": "no", "credential": "miras" }
+]
+function checkTURNServer(turnConfig, timeout) {
 
+	return new Promise(function(resolve, reject) {
+
+		setTimeout(function() {
+			if (promiseResolved) return
+			resolve(false);
+			promiseResolved = true;
+			console.log('wtf timeout')
+		}, timeout || 5000);
+
+		var promiseResolved = false
+			, myPeerConnection = window.RTCPeerConnection
+			, pc = new myPeerConnection({ iceServers: [turnConfig] })
+		pc.createDataChannel("")   //create a bogus data channel
+		pc.createOffer()
+			.then((sdp) => {
+				if (sdp.sdp.indexOf('typ relay') > -1) { // sometimes sdp contains the ice candidates...
+					console.log('wtf')
+					promiseResolved = true
+					resolve(true)
+				}
+				return pc.setLocalDescription(sdp)
+			})    // create offer and set local description
+			.catch(reject)
+		pc.onicecandidate = function(ice) {  //listen for candidate events
+			if (promiseResolved || !ice || !ice.candidate || !ice.candidate.candidate || !(ice.candidate.candidate.indexOf('typ relay') > -1)) return
+			promiseResolved = true
+			console.log('wtf ice candidadte', ice)
+			resolve(true)
+		}
+	})
+}
+
+var stream = null
+
+console.log('iceServers', iceServers)
 
 let wakeLock = null
 function toggleFullScreen() {
 	if (!document.fullscreenElement) {
-		document.documentElement.requestFullscreen()
-		if ("wakeLock" in navigator) {
-			navigator.wakeLock.request("screen")
-				.then(wl => {
-					wakeLock = wl
-				})
-				.catch(console.warn)
+		if ("documentElement" in document && "requestFullscreen" in document.documentElement) {
+			document.documentElement.requestFullscreen()
+			if ("wakeLock" in navigator) {
+				navigator.wakeLock.request("screen")
+					.then(wl => {
+						wakeLock = wl
+					})
+					.catch(console.warn)
+			}
 		}
 	} else if (document.exitFullscreen) {
-		document.exitFullscreen()
-		wakeLock.release().then(() => {
-			wakeLock = null
-		})
+		if ("exitFullscreen" in document) {
+			document.exitFullscreen()
+			if (wakeLock) {
+				wakeLock.release().then(() => {
+					wakeLock = null
+				})
+			}
+		}
 	}
 }
+
+function logLocal(msg) {
+	var logdiv = document.getElementById('log')
+	logdiv.innerHTML += `<div>${msg}</div>`
+}
+function errLocal(msg) {
+	var logdiv = document.getElementById('log')
+	logdiv.innerHTML += `<div style="color:red;">${msg}</div>`
+}
+
 
 
 function init(id) {
@@ -42,7 +91,8 @@ function init(id) {
 
 	// Initialize the library (all console debuggers enabled)
 	Janus.init({
-		debug: "all", callback: function() {
+		debug: "all",
+		callback: function() {
 			janus = new Janus(
 				{
 					server: server,
@@ -54,17 +104,22 @@ function init(id) {
 							success: function(pluginHandle) {
 								streaming = pluginHandle
 								Janus.log("Plugin attached! (" + streaming.getPlugin() + ", id=" + streaming.getId() + ")")
-								let body = { request: "watch", id }
+								var body = { request: "watch", id }
 								streaming.send({ message: body })
 							},
 							error: function(error) {
 								Janus.error("  -- Error attaching plugin... ", error);
 							},
 							iceState: function(state) {
-								Janus.log("ICE state changed to " + state);
+								// Janus.log("ICE state changed to " + state)
+								logLocal("ICE state changed to " + state)
 							},
 							webrtcState: function(on) {
-								Janus.log("Janus says our WebRTC PeerConnection is " + (on ? "up" : "down") + " now");
+								// Janus.log("Janus says our WebRTC PeerConnection is " + (on ? "up" : "down") + " now")
+								logLocal("Janus says our WebRTC PeerConnection is " + (on ? "up" : "down") + " now")
+								if (on === 'up') {
+
+								}
 							},
 							slowLink: function(uplink, lost, mid) {
 								Janus.warn("Janus reports problems " + (uplink ? "sending" : "receiving") +
@@ -72,10 +127,10 @@ function init(id) {
 							},
 							onmessage: function(msg, jsep) {
 								Janus.debug(" ::: Got a message :::", msg)
-								let result = msg["result"]
+								var result = msg["result"]
 								if (result) {
 									if (result["status"]) {
-										let status = result["status"]
+										var status = result["status"]
 										if (status === 'starting')
 											Janus.log("Starting, please wait...")
 										else if (status === 'started')
@@ -83,16 +138,7 @@ function init(id) {
 										else if (status === 'stopped')
 											stopStream()
 									} else if (msg["streaming"] === "event") {
-										// Does this event refer to a mid in particular?
-										let mid = result["mid"] ? result["mid"] : "0";
-										// Is simulcast in place?
-										let substream = result["substream"];
-										let temporal = result["temporal"];
-										if ((substream !== null && substream !== undefined) || (temporal !== null && temporal !== undefined)) {
-										}
-										// Is VP9/SVC in place?
-										let spatial = result["spatial_layer"];
-										temporal = result["temporal_layer"];
+										// no need to do anything
 									}
 								} else if (msg["error"]) {
 									Janus.log("Error, stopping stream...")
@@ -101,7 +147,7 @@ function init(id) {
 								}
 								if (jsep) {
 									Janus.log("Handling SDP as well...", jsep)
-									let stereo = true // (jsep.sdp.indexOf("stereo=1") !== -1)
+									var stereo = true // (jsep.sdp.indexOf("stereo=1") !== -1)
 									Janus.log("Got stereo? " + stereo)
 									// Offer from the plugin, let's answer
 									streaming.createAnswer(
@@ -111,9 +157,9 @@ function init(id) {
 											// case they were offered we'll enable them. Since we
 											// don't mention audio or video tracks, we autoaccept them
 											// as recvonly (since we won't capture anything ourselves)
-											tracks: [
-												{ type: 'data' }
-											],
+											// tracks: [
+											//		{ type: 'data' }
+											//	],
 											customizeSdp: function(jsep) {
 												if (stereo && jsep.sdp.indexOf("stereo=1") == -1) {
 													// Make sure that our offer contains stereo too
@@ -123,7 +169,7 @@ function init(id) {
 											},
 											success: function(jsep) {
 												Janus.log("Got SDP!", jsep)
-												let body = { request: "start" };
+												var body = { request: "start" };
 												streaming.send({ message: body, jsep: jsep });
 												Janus.log("sending jsep")
 											},
@@ -134,33 +180,48 @@ function init(id) {
 								}
 							},
 							onremotetrack: function(track, mid, on, metadata) {
-								Janus.debug(
+								logLocal(
 									"Remote track (mid=" + mid + ") " +
 									(on ? "added" : "removed") +
 									(metadata ? " (" + metadata.reason + ") " : "") + ":", track
-								);
-								let mstreamId = "mstream" + mid;
-								if (streamsList[selectedStream] && streamsList[selectedStream].legacy)
-									mstreamId = "mstream0";
+								)
 								if (!on) {
-									if (track.kind === "video") {
-									}
-									delete remoteTracks[mid];
-									return;
+									logLocal('setting stream to null')
+									stream = null
 								}
 								// If we're here, a new track was added
 								// $('#spinner' + mid).remove();
-								let stream = null;
-								if (track.kind === "audio") {
+								if (on && track.kind === "audio" && stream === null) {
 									// New audio track: create a stream out of it, and use a hidden <audio> element
-									stream = new MediaStream([track]);
-									remoteTracks[mid] = stream;
-									Janus.log("Created remote audio stream:", stream);
+									stream = new MediaStream([track])
+									// Janus.log("Created remote audio stream:", stream);
+									logLocal("Created remote audio stream")
+									var a = document.getElementById('audio')
+
+									if (a) {
+										a.style.display = 'block'
+										a.style.visibility = 'visible'
+
+										try {
+											a.srcObject = stream
+											a.play()
+												.then(() => logLocal("Created remote audio stream"))
+												.catch(e => errLocal(e))
+										} catch (e) {
+											try {
+												alert('cannot set srcObject')
+												a.src = URL.createObjectURL(stream)
+											} catch (e) {
+												Janus.error("Error attaching stream to element", e)
+											}
+										}
+									} else {
+										alert('No audio element')
+									}
+
 								} else {
 									Janus.log("Got video, but should not have.", stream);
 								}
-								// Play the stream when we get a playing event
-								Janus.attachMediaStream(document.getElementById('audio'), stream);
 							},
 							ondataopen: function(label, protocol) {
 								Janus.log("The DataChannel is available!");
@@ -186,7 +247,7 @@ function init(id) {
 
 
 function getStreamInfo() {
-	let body = { request: "info", id: 1 }
+	var body = { request: "info", id: 1 }
 	streaming.send({
 		message: body, success: function(result) {
 			if (result && result.info && result.info.metadata) {
@@ -197,7 +258,7 @@ function getStreamInfo() {
 }
 
 function stopStream() {
-	let body = { request: "stop" };
+	var body = { request: "stop" };
 	streaming.send({ message: body });
 	streaming.hangup();
 }
@@ -205,9 +266,17 @@ function stopStream() {
 // Helper to escape XML tags
 function escapeXmlTags(value) {
 	if (value) {
-		let escapedValue = value.replace(new RegExp('<', 'g'), '&lt');
+		var escapedValue = value.replace(new RegExp('<', 'g'), '&lt');
 		escapedValue = escapedValue.replace(new RegExp('>', 'g'), '&gt');
 		return escapedValue;
 	}
 }
+
+checkTURNServer({
+	urls: "turn:nyc-turn.listen.center:443?transport=tcp",
+	"username": "no",
+	"credential": "miras"
+}).then(function(bool) {
+	console.log('is TURN server active? ', bool ? 'yes' : 'no');
+}).catch(console.error)
 
