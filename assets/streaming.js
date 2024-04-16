@@ -16,7 +16,7 @@ console.log('iceServers', iceServers)
 function playAudio() {
 	var a = document.getElementById('audio')
 	if (a && a.readyState >= 3 && a.paused === true) {
-		console.log('playing')
+		toggleFullScreen()
 		a.play()
 			.then(() => {
 				var playButton = document.getElementById('playButton')
@@ -67,7 +67,6 @@ function errLocal(msg) {
 
 
 function init(id) {
-	toggleFullScreen()
 	if (!Janus || !Janus.isWebrtcSupported()) {
 		window.alert('No WebRTC support... ')
 		return
