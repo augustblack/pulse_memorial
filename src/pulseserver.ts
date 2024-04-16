@@ -15,24 +15,21 @@ export class PulseServer {
   state: DurableObjectState
   app: Hono = new Hono()
 
-  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
-    console.log('closing', code, reason, 'was clean:', wasClean)
+  async webSocketClose(ws: WebSocket, _code: number, _reason: string, _wasClean: boolean) {
     const id = (this.state.getTags(ws) || ['wtf'])[0]
 
     const pulseList = await this.state.storage?.get<PulseList>('pulseList') || new Map()
 
-    console.log('closing, pl', pulseList)
     pulseList.forEach((v, key) => {
       pulseList.set(key, v.filter((i: string) => i !== id))
     })
-    console.log('closing, NEW pl', pulseList)
     await this.state.storage?.put('pulseList', new Map(pulseList))
+    console.log('pl', pulseList)
     const participantCount = this.state.getWebSockets().length
     this.state.getWebSockets().forEach(w => w !== ws
       ? w.send(JSON.stringify({ participantCount }))
       : null
     )
-
   }
   async webSocketError(_ws: WebSocket, error: unknown) {
     console.log('got error:', error)
@@ -73,7 +70,6 @@ export class PulseServer {
           min = { key, len: v.length }
         }
       })
-      console.log('min', min)
       pulseList.set(min.key,
         (pulseList.get(min.key) || []).concat(id)
       )
