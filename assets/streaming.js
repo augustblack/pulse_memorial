@@ -274,7 +274,7 @@ function websocket(url) {
 
 var url = new URL(window.location)
 url.protocol = url.protocol === 'https:' ? 'wss' : 'ws'
-url.pathname = `/ws/4/${opaqueId}`
+url.pathname = `/ws/8/${opaqueId}`
 console.log('url', url.href)
 websocket(url.href)
 
