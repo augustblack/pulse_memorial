@@ -1,0 +1,33 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link
+    rel="shortcut icon"
+    href="favicon.svg"
+  />
+		<style>
+		</style>
+	</head>
+	<body>
+		<button id="reset">clear</button>
+		<script text="javascript">
+		var b = document.getElementById('reset')
+		function onClick() {
+    	b.innerHTML = '...'
+			fetch('/ws/clear', {
+    		method: "POST"
+    	})
+    		.then(() => {
+    			b.innerHTML = 'cleared'
+    			setTimeout(() => {
+    				b.innerHTML = 'clear'
+    				}, 2000)
+    		})
+    		.catch(console.warn)
+		}
+		b.addEventListener('click', onClick)
+
+		</script>
+	</body>
+</html>
