@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { basicAuth } from 'hono/basic-auth'
 
 type PulseList = Map<number, Array<string>>
 
@@ -31,6 +32,7 @@ export class PulseServer {
       : null
     )
   }
+
   async webSocketError(_ws: WebSocket, error: unknown) {
     console.log('got error:', error)
   }
@@ -48,6 +50,19 @@ export class PulseServer {
       await this.state.storage?.put('pulseList', pulseList)
 
       return c.json({ pulseList })
+    })
+
+    this.app.use(
+      '/ws/clear',
+      basicAuth({
+        username: 'admin',
+        password: 'pulse',
+      })
+    )
+
+    this.app.post('/ws/clear', async (c) => {
+      await this.state.storage?.put('pulseList', new Map())
+      return c.json(JSON.stringify({ done: true }))
     })
 
     this.app.get('/ws/:count/:id', async (c) => {
