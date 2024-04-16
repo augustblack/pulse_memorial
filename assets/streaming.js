@@ -103,7 +103,7 @@ function init(id) {
 								var playButton = document.getElementById('playButton')
 								if (playButton) {
 									if (on) {
-										playButton.innerHTML = 'play'
+										playButton.innerHTML = `<div>play</div><div style="font-size:0.5em">${id}</div>`
 										playButton.addEventListener('click', playAudio)
 									} else {
 										playButton.classList.remove('pulsingButton')
