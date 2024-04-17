@@ -59,11 +59,6 @@ function logLocal(msg) {
 	// var logdiv = document.getElementById('log')
 	// logdiv.innerHTML += `<div>${msg}</div>`
 }
-function errLocal(msg) {
-	var logdiv = document.getElementById('log')
-	logdiv.innerHTML += `<div style="color:red;">${msg}</div>`
-}
-
 
 
 function init(id) {
