@@ -71,7 +71,8 @@ function init(id) {
 		window.alert('No WebRTC support... ')
 		return
 	}
-
+	var playButton = document.getElementById('playButton')
+	playButton.innerHTML = '<div style="font-size:0.7em">loading</div>'
 	// Initialize the library (all console debuggers enabled)
 	Janus.init({
 		debug: 'all',
@@ -100,7 +101,6 @@ function init(id) {
 							webrtcState: function(on) {
 								// Janus.log("Janus says our WebRTC PeerConnection is " + (on ? "up" : "down") + " now")
 								logLocal('Janus says our WebRTC PeerConnection is ' + (on ? 'up' : 'down') + ' now')
-								var playButton = document.getElementById('playButton')
 								if (playButton) {
 									if (on) {
 										playButton.innerHTML = `<div>play</div><div style="font-size:0.5em">${id}</div>`
