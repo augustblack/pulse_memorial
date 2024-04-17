@@ -247,12 +247,14 @@ function websocket(url) {
 					init(msg.streamId)
 				}
 			}
+			/*
 			if ('participantCount' in msg) {
 				var pc = document.getElementById('participantCount')
 				if (pc) {
 					pc.innerHTML = msg.participantCount
 				}
 			}
+			*/
 		} catch (error) {
 			console.log('msg decode error:', error)
 		}
