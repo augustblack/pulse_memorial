@@ -98,7 +98,8 @@ function init(id) {
 								logLocal('Janus says our WebRTC PeerConnection is ' + (on ? 'up' : 'down') + ' now')
 								if (playButton) {
 									if (on) {
-										playButton.innerHTML = `<div>play</div><div style="font-size:0.5em">${id}</div>`
+										// playButton.innerHTML = `<div>play</div><div style="font-size:0.5em">${id}</div>`
+										playButton.innerHTML = '<div>play</div>'
 										playButton.addEventListener('click', playAudio)
 									} else {
 										playButton.classList.remove('pulsingButton')
