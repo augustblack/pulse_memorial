@@ -25,7 +25,7 @@ export class PulseServer {
       pulseList.set(key, v.filter((i: string) => i !== id))
     })
     await this.state.storage?.put('pulseList', new Map(pulseList))
-    console.log('pl', pulseList)
+    // console.log('pl', pulseList)
     const participantCount = this.state.getWebSockets().length
     this.state.getWebSockets().forEach(w => w !== ws
       ? w.send(JSON.stringify({ participantCount }))
@@ -78,7 +78,7 @@ export class PulseServer {
 
       const pl = await this.state.storage?.get<PulseList>('pulseList') || new Map()
       const pulseList = createDefPL(count, pl)
-      console.log('pl', pulseList)
+      // console.log('pl', pulseList)
       let min = { key: 1 + Math.floor(Math.random() * (count - 1)), len: 100000 }
       pulseList.forEach((v, key) => {
         if (v.length <= min.len) {
