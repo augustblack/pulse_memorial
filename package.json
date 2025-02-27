@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "wrangler dev src/index.ts",
+    "devold": "wrangler dev src/index.ts",
+    "dev" : "wrangler dev --remote",
+    "build" : "cd ui;npm run build",
     "deploy": "wrangler deploy --minify src/index.ts"
   },
   "author": "",
@@ -16,9 +18,11 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250124.3",
     "@hono/eslint-config": "^1.0.2",
+    "@types/mimetext": "^2.0.4",
     "@typescript-eslint/eslint-plugin": "^8.21.0",
     "@typescript-eslint/parser": "^8.21.0",
     "eslint": "^9.19.0",
+    "mimetext": "^3.0.27",
     "wrangler": "^3.105.1"
   },
   "volta": {
