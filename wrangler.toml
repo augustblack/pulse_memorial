@@ -1,11 +1,22 @@
 name = "pulse-server"
-compatibility_date = "2025-01-25"
+compatibility_flags = [ "nodejs_compat" ]
+compatibility_date = "2025-01-24"
 main = "src/index.ts"
 
+# https://hono.dev/docs/getting-started/cloudflare-workers#serve-static-files
 assets = { directory = "assets" }
+
+send_email = [
+  {name = "BROOK_EMAIL", destination_address = "augustblack@gmail.com"},
+]
 
 [durable_objects]
 bindings = [{name = "PULSE_SERVER", class_name = "PulseServer"}]
+
+[[r2_buckets]]
+binding = 'MY_BUCKET' # <~ valid JavaScript variable name
+bucket_name = 'pulse'
+preview_bucket_name = 'pulse'
 
 [[migrations]]
 tag = "v1" # Should be unique for each entry
