@@ -13,8 +13,10 @@ type R2UploadedPart = {
 fileUploader;
 
 //VITE_WS_URL='http://localhost:8787'
-const WORKERS_URL = import.meta.env.VITE_WS_URL || window.location
-const FILES_ENDPOINT = WORKERS_URL + '/files'
+const WORKERS_URL = import.meta.env.VITE_WS_URL || (window.location.protocol + '//' + window.location.hostname)
+const FILES_ENDPOINT = (WORKERS_URL + '/files').replace(/([^:]\/)\/+/g, "$1")
+console.log('WORKERS_URL', WORKERS_URL)
+console.log('FILES_ENDPOINT', FILES_ENDPOINT)
 
 export async function calcDigest(file: File) {
   const reader = file.stream().getReader()

@@ -10,6 +10,7 @@ export default defineConfig({
   plugins: [solid(), tailwindcss()],
   build: {
     outDir: '../assets',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
