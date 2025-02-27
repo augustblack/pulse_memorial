@@ -23,3 +23,5 @@ yarn-error.log*
 # local env files
 .env
 .wrangler/*
+
+.dev.vars
