@@ -18,7 +18,7 @@ export const sendEmail = (c: Context, key: string | null) => {
     "augustblack@gmail.com",
     msg.asRaw()
   )
-  return c.env.BROOK_EMAIL.send(message)
+  return Promise.all([c.env.BROOK_EMAIL.send(message), c.env.AUGUST_EMAIL.send(message)])
 }
 
 export const handleUpload = async (c: Context) => {

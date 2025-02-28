@@ -7,7 +7,8 @@ main = "src/index.ts"
 assets = { directory = "assets" }
 
 send_email = [
-  {name = "BROOK_EMAIL", destination_address = "augustblack@gmail.com"},
+  {name = "BROOK_EMAIL", destination_address = "cordylia.vann@colorado.edu"},
+  {name = "AUGUST_EMAIL", destination_address = "augustblack@gmail.com"}
 ]
 
 [durable_objects]
