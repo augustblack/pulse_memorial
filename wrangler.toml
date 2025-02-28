@@ -23,6 +23,9 @@ preview_bucket_name = 'pulse'
 tag = "v1" # Should be unique for each entry
 new_classes = ["PulseServer"]
 
+[observability]
+enabled = true
+
 #[site]
 #bucket = "./assets"
 

@@ -156,14 +156,18 @@ const FileUploader: Component<{ file: File }> = ({
   file
 }) => {
   const [ups, setUps] = createSignal<Array<number>>([])
+  const [done, setDone] = createSignal<boolean>(false)
   const status = () => {
     const u = ups()
+    const d = done()
     const accum = u.reduce((acc, v) => acc + v, 0)
-    return u.length === 0
+    return u.length === 0 && !d
       ? 'initiating'
-      : accum === u.length
+      : accum === u.length && d
         ? 'done'
-        : '...' + (accum / u.length * 100).toFixed(0) + '%'
+        : accum === u.length
+          ? '...finalizing'
+          : '...' + (accum / u.length * 100).toFixed(0) + '%'
   }
   getUploadFileParts(file)
     .then(b => {
@@ -187,7 +191,14 @@ const FileUploader: Component<{ file: File }> = ({
             body: JSON.stringify({ parts })
           })
         })
-        .then(console.log)
+        .then(res => res.headers.get("content-type")?.indexOf("application/json") === -1
+          ? res.text()
+          : res.json()
+        )
+        .then(() => {
+          setDone(true)
+          setUps([])
+        })
     )
     .catch(e => console.log('error:', e))
   return (

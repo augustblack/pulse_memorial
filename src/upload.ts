@@ -2,7 +2,7 @@ import type { Context } from 'hono'
 import { EmailMessage } from "cloudflare:email"
 import { createMimeMessage } from 'mimetext'
 
-export const sendEmail = (c: Context, key: string | null) => {
+export const getEmailMsg = (c: Context, key: string | null, toAddy: string) => {
   const msg = createMimeMessage()
   msg.setSender({ name: "Pulse Memorial", addr: "brook@pulse.memorial" })
   msg.setRecipient('augustblack@gmail.com')
@@ -15,10 +15,10 @@ export const sendEmail = (c: Context, key: string | null) => {
 
   var message = new EmailMessage(
     "brook@pulse.memorial",
-    "augustblack@gmail.com",
+    toAddy, //"augustblack@gmail.com",
     msg.asRaw()
   )
-  return Promise.all([c.env.BROOK_EMAIL.send(message), c.env.AUGUST_EMAIL.send(message)])
+  return message
 }
 
 export const handleUpload = async (c: Context) => {
@@ -38,7 +38,6 @@ export const handleUpload = async (c: Context) => {
       switch (action) {
         case "mpu-create": {
           const multipartUpload = await bucket.createMultipartUpload(key)
-          console.log('create', multipartUpload)
           return Response.json({
             key: multipartUpload.key,
             uploadId: multipartUpload.uploadId
@@ -68,14 +67,16 @@ export const handleUpload = async (c: Context) => {
           // Error handling in case the multipart upload does not exist anymore
           try {
             const obj = await multipartUpload.complete(completeBody.parts)
-            await sendEmail(c, key)
-            return new Response(null, {
+            const r1 = await Promise.all([
+              c.env.AUGUST_EMAIL.send(getEmailMsg(c, key, "augustblack@gmail.com")),
+              c.env.BROOK_EMAIL.send(getEmailMsg(c, key, "cordylia.vann@colorado.edu"))
+            ])
+            return Response.json({}, {
               headers: {
                 etag: obj.httpEtag,
               },
             })
           } catch (error: any) {
-            console.log(error.message)
             return new Response(error.message, { status: 400 })
           }
         }
