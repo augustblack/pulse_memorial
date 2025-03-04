@@ -16,7 +16,8 @@ url.searchParams.set('action', "list")
 const fetchUser = async () => (await fetch(url, { credentials: 'include' })).json()
 
 function App() {
-  const [files] = createResource("", fetchUser)
+  const [fetchCount, setFetchCount] = createSignal(0)
+  const [files] = createResource(fetchCount, fetchUser)
   const [clear, setClear] = createSignal("clear")
   const onClick = () => {
     setClear('...')
@@ -32,6 +33,25 @@ function App() {
       })
       .catch(console.warn)
   }
+  const handleDelete = async (key: string) => {
+    if (!confirm(`Are you sure you want to delete ${key}?`)) {
+      return
+    }
+    const u = new URL(FILES_ENDPOINT)
+    u.searchParams.set("action", "delete")
+    u.searchParams.set("key", key)
+    fetch(u, {
+      method: "DELETE",
+      credentials: 'include'
+    })
+      .then(res => res.ok
+        ? res.text()
+        : res.text()
+      )
+      .then(() => setFetchCount(fc => fc + 1))
+      .catch(console.warn)
+  }
+
 
   return (
     <div class="w-screen h-screen bg-red-200 flex justify-center items-center bg-red-200" >
@@ -41,14 +61,17 @@ function App() {
 
           <For each={files()}>{
             u =>
-              <div class='bg-red-600 text-red-100 p-2 rounded' >
-                <a href={'https://assets.pulse.memorial/' + encodeURIComponent(u.key)}>{u.key}</a>
+              <div class="bg-red-600 text-red-100 p-2 rounded flex items-center gap-4" >
+                <div class="flex-grow" >
+                  <a class="cursor-pointer" href={'https://assets.pulse.memorial/' + encodeURIComponent(u.key)}>{u.key} </a>
+                  <div class="text-xs">{u.uploaded}</div>
+                </div>
+                <button class="cursor-pointer flex-none" onclick={() => handleDelete(u.key)}>x</button>
               </div>
           }</For >
+          <button class="p-2 rounded bg-red-900 hidden" onclick={onClick}>{clear()}</button>
         </div>
-        <button onclick={onClick}>{clear()}</button>
       </div>
-
     </div >
   )
 }
