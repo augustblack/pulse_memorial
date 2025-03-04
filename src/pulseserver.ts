@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { basicAuth } from 'hono/basic-auth'
 
 type PulseList = Map<number, Array<string>>
@@ -54,6 +55,11 @@ export class PulseServer {
 
     this.app.use(
       '/ws/clear',
+      cors({
+        origin: "http://localhost:5173",
+        credentials: true
+      }),
+
       basicAuth({
         username: 'admin',
         password: 'pulse',
