@@ -1,8 +1,10 @@
 /* @refresh reload */
-import { render } from 'solid-js/web'
-import { For, Component, Setter, createSignal } from 'solid-js'
+import { render, Portal } from 'solid-js/web'
+import { Show, For, Component, Setter, createSignal, onMount } from 'solid-js'
 import { createDropzone, createFileUploader, fileUploader } from "@solid-primitives/upload"
 import jsSHA from 'jssha'
+import { MediaRecorder } from 'extendable-media-recorder'
+
 import './index.css'
 
 type R2UploadedPart = {
@@ -214,6 +216,216 @@ const FileUploader: Component<{ file: File }> = ({
   )
 }
 
+type FileRec = {
+  blob: Blob
+  name: string
+  objUrl: string
+  isUploaded: boolean
+}
+
+const [isRecording, setIsRecording] = createSignal(false)
+const [recordings, setRecordings] = createSignal<Array<FileRec>>([])
+
+
+const ctx = new AudioContext()
+let micSource: MediaStreamAudioSourceNode
+const vol = ctx.createGain()
+const analyser = ctx.createAnalyser()
+analyser.fftSize = 2048
+const compressor = new DynamicsCompressorNode(ctx, {
+  threshold: -50,
+  knee: 40,
+  ratio: 12,
+  attack: 0,
+  release: 0.25
+})
+const limiter = ctx.createDynamicsCompressor()
+limiter.threshold.value = 0.0 // this is the pitfall, leave some headroom
+limiter.knee.value = 0.0 // brute force
+limiter.ratio.value = 20.0 // max compression
+limiter.attack.value = 0.005 // 5ms attack
+limiter.release.value = 0.050
+const dest = ctx.createMediaStreamDestination()
+const recorder = new MediaRecorder(dest.stream, { audioBitsPerSecond: 192000 })
+vol.gain.value = 1
+vol
+  .connect(compressor)
+  .connect(limiter)
+  .connect(analyser)
+  .connect(dest)
+recorder.onstart = () => console.log('start recording')
+recorder.ondataavailable = function(e) {
+  const d = new Date(Date.now()).toLocaleString('us')
+  const name = d.toLocaleString()
+  console.log('data', name, e.data)
+  setRecordings(r => [{
+    blob: e.data,
+    name,
+    objUrl: window.URL.createObjectURL(e.data),
+    isUploaded: false
+  }, ...r])
+  //  e.data.type
+}
+recorder.onstop = function() {
+  console.log('stop')
+}
+
+export const setupRecorder = () => {
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return Promise.reject(new Error('No navigator.mediaDevices'))
+  console.log('setup recorder')
+  return navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: true
+    }
+  })
+    .then(function(stream) {
+      if (micSource) {
+        micSource.disconnect()
+      }
+      micSource = ctx.createMediaStreamSource(stream)
+      micSource.connect(vol)
+    })
+    .catch((err) => {
+      console.error('Error accessing microphone:', err)
+    })
+}
+
+
+const startRecording = () => {
+  setIsRecording(true)
+  recorder.start()
+}
+
+const stopRecording = () => {
+  recorder.stop()
+  setIsRecording(false)
+}
+
+const toggleRecording = () => {
+  console.log('toggleRecording')
+  if (isRecording()) {
+    stopRecording()
+  } else {
+    startRecording()
+  }
+}
+export const RecItem: Component<{ fileRec: FileRec }> = ({ fileRec }) => {
+  return (
+    <div class="flex flex-col">
+      <div>{fileRec.name}</div>
+      <audio class="flex-grow" controls src={fileRec.objUrl} />
+      <button class="flex-none p-2 rounded ">upload</button>
+    </div>
+  )
+}
+
+
+const RecordUI = () => {
+  let canvasRef: HTMLCanvasElement
+  let timerOn = false
+
+  onMount(() => {
+    if (!canvasRef) return
+    const canvasCtx = canvasRef.getContext('2d')
+    const bufferLength = analyser.frequencyBinCount
+    const dataArray = new Uint8Array(bufferLength)
+    let cummulativeTime = 0
+    let laststartTime = 0
+
+    draw()
+    let count = 0
+
+    function draw() {
+      if (!canvasCtx) return
+      const WIDTH = canvasRef.width
+      const HEIGHT = canvasRef.height
+
+      requestAnimationFrame(draw)
+      if (timerOn) {
+        const currentTime = (new Date()).getTime()
+        cummulativeTime += (currentTime - laststartTime)
+        laststartTime = currentTime
+        if (count++ > 100) {
+          // setTime(cummulativeTime / 1000)
+          count = 0
+        }
+      }
+
+      analyser.getByteTimeDomainData(dataArray)
+
+      canvasCtx.fillStyle = 'rgb(0, 0, 0)'
+      canvasCtx.fillRect(0, 0, WIDTH, HEIGHT)
+
+      canvasCtx.lineWidth = 1.5
+      canvasCtx.strokeStyle = 'rgb(244, 50, 100)'
+
+      canvasCtx.beginPath()
+
+      let sliceWidth = WIDTH * 1.0 / bufferLength
+      let x = 0
+
+      for (let i = 0; i < bufferLength; i++) {
+
+        let v = dataArray[i] / 128.0
+        let y = v * HEIGHT / 2
+
+        if (i === 0) {
+          canvasCtx.moveTo(x, y)
+        } else {
+          canvasCtx.lineTo(x, y)
+        }
+        x += sliceWidth
+      }
+      canvasCtx.lineTo(canvasRef.width, canvasRef.height / 2)
+      canvasCtx.stroke()
+    }
+  })
+
+  return (
+    <div class="flex gap-4">
+      <button type="button" onClick={() => toggleRecording()}>{isRecording() ? 'Stop' : 'Record'}</button>
+      <canvas ref={canvasRef} class='w-full h-32' />
+    </div>
+  )
+}
+
+
+function createModal() {
+  const [open, setOpen] = createSignal(false)
+  return {
+    openModal() {
+      if (ctx.state !== 'running') {
+        ctx.resume()
+          .then(() => console.log('ctx resumed'))
+          .catch(console.warn)
+      }
+      console.log('open')
+      setupRecorder()
+        .then(() => setOpen(true))
+        .catch(console.warn)
+    },
+    Modal() {
+      return (
+        <Portal>
+          <Show when={open()}>
+            <div class="w-screen h-screen flex justify-center items-center z-2 absolute left-0 top-0" >
+              <div class="w-screen h-screen flex justify-center items-center z-2 absolute left-0 top-0 bg-red-900 opacity-30" />
+              <div class="flex flex-col gap-4 items-center w-full h-4/5 md:w-1/2 z-4 bg-red-400 rounded opacity-100 p-4">
+                <RecordUI />
+                <button onClick={() => setOpen(false)}>Close</button>
+                <div class="flex flex-col gap-4 max-w-1/2 h-2/3 overflow-y-auto">
+                  <For each={recordings()}>{f => <RecItem fileRec={f} />}</For>
+                </div>
+              </div >
+            </div >
+          </Show>
+        </Portal>
+      )
+    }
+  }
+}
 function App() {
   const { setRef: dropzoneRef, files: droppedFiles } = createDropzone({
     onDrop: async files => {
@@ -221,27 +433,29 @@ function App() {
     },
     onDragOver: files => console.log("over", files.length),
   })
+  const { Modal, openModal } = createModal()
   const { files, selectFiles } = createFileUploader()
 
   return (
-    <div ref={dropzoneRef} class="w-screen h-screen bg-red-200 flex justify-center items-center bg-red-200" >
-      <div class="flex flex-col gap-4 items-center w-full md:w-1/2 ">
-
-        <div class="flex gap-4">
-          <button class="rounded bg-red-600 text-red-100 p-4">
-            Record
-          </button>
-          <button class="rounded bg-red-600 text-red-100 p-4" onClick={() => selectFiles(console.log)}>
-            Upload
-          </button>
-        </div>
-        <div class="flex flex-col gap-4 max-w-1/2">
-          <For each={files()}>{f => <FileUploader file={f.file} />}</For>
-          <For each={droppedFiles()}>{f => <FileUploader file={f.file} />}</For>
-        </div>
+    <>
+      <div ref={dropzoneRef} class="w-screen h-screen flex justify-center items-center" >
+        <div class="flex flex-col gap-4 items-center w-full md:w-1/2 ">
+          <div class="flex gap-4">
+            <button type="button" class="rounded bg-red-600 text-red-100 p-4" onClick={openModal}>
+              Record
+            </button>
+            <button type="button" class="rounded bg-red-600 text-red-100 p-4" onClick={() => selectFiles(console.log)}>
+              Upload
+            </button>
+          </div>
+          <div class="flex flex-col gap-4 max-w-1/2">
+            <For each={files()}>{f => <FileUploader file={f.file} />}</For>
+            <For each={droppedFiles()}>{f => <FileUploader file={f.file} />}</For>
+          </div>
+        </div >
       </div >
-
-    </div >
+      <Modal />
+    </>
   )
 }
 
