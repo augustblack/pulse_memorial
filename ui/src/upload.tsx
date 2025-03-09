@@ -232,19 +232,20 @@ let micSource: MediaStreamAudioSourceNode
 const vol = ctx.createGain()
 const analyser = ctx.createAnalyser()
 analyser.fftSize = 2048
-const compressor = new DynamicsCompressorNode(ctx, {
-  threshold: -50,
-  knee: 40,
-  ratio: 12,
-  attack: 0,
-  release: 0.25
-})
+const compressor = ctx.createDynamicsCompressor()
+compressor.threshold.value = -30.0  //  less intene for vocal
+compressor.knee.value = 15.0 // between 6-20 (somewhere in this range) ,
+compressor.ratio.value = 7.0 // max compression
+compressor.attack.value = 0.003 // 3ms attack
+compressor.release.value = 0.030
+
 const limiter = ctx.createDynamicsCompressor()
-limiter.threshold.value = 0.0 // this is the pitfall, leave some headroom
-limiter.knee.value = 0.0 // brute force
-limiter.ratio.value = 20.0 // max compression
-limiter.attack.value = 0.005 // 5ms attack
+limiter.threshold.value = -1.0 // this is the pitfall, leave some headroom
+limiter.knee.value = 4.0 // 3-6 range 
+limiter.ratio.value = 12.0 // 10-15 range 
+limiter.attack.value = 0.007 // 5-10ms attack
 limiter.release.value = 0.050
+
 const dest = ctx.createMediaStreamDestination()
 const recorder = new MediaRecorder(dest.stream, { audioBitsPerSecond: 192000 })
 vol.gain.value = 1
