@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@solid-primitives/upload": "^0.1.0",
+    "extendable-media-recorder": "^9.2.20",
     "jssha": "^3.3.1",
     "solid-js": "^1.9.5"
   },
