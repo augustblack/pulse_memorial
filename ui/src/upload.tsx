@@ -1,6 +1,8 @@
 /* @refresh reload */
 import { render, Portal } from 'solid-js/web'
-import { Show, For, Component, Setter, createSignal, onMount } from 'solid-js'
+import { createStore, unwrap } from "solid-js/store"
+import { Show, For, Switch, Match, createSignal, onMount } from 'solid-js'
+import type { Component } from 'solid-js'
 import { createDropzone, createFileUploader, fileUploader } from "@solid-primitives/upload"
 import jsSHA from 'jssha'
 import { MediaRecorder } from 'extendable-media-recorder'
@@ -12,6 +14,27 @@ type R2UploadedPart = {
   etag: string
 }
 
+type UpItem = {
+  blob: Blob | File
+  key: string
+  objUrl?: string
+  ups: Array<number>
+  isUploaded: boolean
+  upParts?: Array<R2UploadedPart>
+}
+
+type UpStore = {
+  isRecording: boolean
+  recordings: Record<string, UpItem>
+  files: Record<string, UpItem>
+}
+
+const [store, setStore] = createStore<UpStore>({
+  isRecording: false,
+  recordings: {},
+  files: {}
+})
+
 fileUploader;
 
 //VITE_WS_URL='http://localhost:8787'
@@ -20,7 +43,7 @@ const FILES_ENDPOINT = (WORKERS_URL + '/files').replace(/([^:]\/)\/+/g, "$1")
 console.log('WORKERS_URL', WORKERS_URL)
 console.log('FILES_ENDPOINT', FILES_ENDPOINT)
 
-export async function calcDigest(file: File) {
+export async function calcDigest(file: File | Blob) {
   const reader = file.stream().getReader()
   const shaObj = new jsSHA("SHA-256", "ARRAYBUFFER")
 
@@ -32,14 +55,6 @@ export async function calcDigest(file: File) {
 
   console.log(shaObj.getHash("HEX"))
   return shaObj.getHash("HEX")
-}
-export async function getFileHash(file: File, algorithm = 'SHA-1') {
-  file.stream
-  const buffer = await file.arrayBuffer()
-  const hashBuffer = await crypto.subtle.digest(algorithm, buffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  return hashHex
 }
 
 const createUpPartUrl = (
@@ -57,11 +72,12 @@ const createUpPartUrl = (
 
 
 export function xhrUpPart(
+  storeName: "files" | "recordings",
+  storeKey: string,
   key: string,
   partNumber: number,
   formData: FormData,
   uploadId: string,
-  setUps: Setter<Array<number>>,
   count: number = 0
 ) {
   const url = createUpPartUrl(key, partNumber, uploadId)
@@ -69,10 +85,11 @@ export function xhrUpPart(
   return new Promise((resolve, reject) => {
     xhr.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) {
-        setUps(ups => ups.map((u, i) => i === partNumber - 1
-          ? event.loaded / event.total
-          : u
-        ))
+        setStore(storeName, storeKey, "ups", (ups: Array<number>) =>
+          ups.map((u, i) => i === partNumber - 1
+            ? event.loaded / event.total
+            : u
+          ))
       }
     })
     xhr.addEventListener("loadend", () => {
@@ -84,7 +101,7 @@ export function xhrUpPart(
 
     xhr.addEventListener("error", (count > 3
       ? e => reject(e)
-      : () => xhrUpPart(key, partNumber, formData, uploadId, setUps, count + 1)
+      : () => xhrUpPart(storeName, storeKey, key, partNumber, formData, uploadId, count + 1)
     ))
     xhr.open("PUT", url, true)
     xhr.withCredentials = true
@@ -97,7 +114,6 @@ export async function uploadPart(
   partNumber: number,
   formData: FormData,
   uploadId: string,
-  setUps: Setter<Array<number>>,
   count: number = 0
 ): Promise<R2UploadedPart> {
   const url = createUpPartUrl(key, partNumber, uploadId)
@@ -112,21 +128,18 @@ export async function uploadPart(
   } catch (e) {
     console.log('got error:', e)
     return count < 3
-      ? uploadPart(key, partNumber, formData, uploadId, setUps, count + 1)
+      ? uploadPart(key, partNumber, formData, uploadId, count + 1)
       : Promise.reject(new Error(`Tried 3 times to upload part ${partNumber} and failed.`))
   }
 }
 
-async function getUploadFileParts(file: File) {
+async function getUploadFileParts(upItem: UpItem) {
 
   const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
-  const totalParts = Math.ceil(file.size / CHUNK_SIZE)
-
-  const hash = await calcDigest(file)
-  const key = file.name.replace(/\.([a-zA-Z0-9]*)$/, '.' + hash.slice(0, 5) + '.$1')
+  const totalParts = Math.ceil(upItem.blob.size / CHUNK_SIZE)
 
   const url = new URL(FILES_ENDPOINT)
-  url.searchParams.append('key', key)
+  url.searchParams.append('key', upItem.key)
   url.searchParams.append('action', 'mpu-create')
 
   const uploadIdResponse = await fetch(url, {
@@ -139,12 +152,11 @@ async function getUploadFileParts(file: File) {
   const uploadId = multiPartUploadJson.uploadId
 
   return {
-    key,
     uploadId,
     forms: [...Array(totalParts).keys()].map(i => {
       const start = CHUNK_SIZE * i
-      const end = Math.min(file.size, start + CHUNK_SIZE)
-      const blob = file.slice(start, end)
+      const end = Math.min(upItem.blob.size, start + CHUNK_SIZE)
+      const blob = upItem.blob.slice(start, end)
       const formData = new FormData()
       formData.append('file', blob)
       return formData
@@ -152,16 +164,50 @@ async function getUploadFileParts(file: File) {
   }
 }
 
-const root = document.getElementById('root')
+const uploadItem = (storeName: "files" | "recordings", storeKey: string, upItem: UpItem) => getUploadFileParts(upItem)
+  .then(b => {
+    const ups = b.forms.map(_ => 0)
+    // setStore(storeName, storeKey, Object.assign({}, upItem, { ups }))
+    console.log('trying to set uploadItem', storeKey, ups)
+    setStore(storeName, storeKey, "ups", ups)
+    console.log('set uploadItem', ups)
+    return b
+  })
+  .then(({ uploadId, forms }) =>
+    Promise.all(forms.map((formData, i) => xhrUpPart(storeName, storeKey, upItem.key, i + 1, formData, uploadId)))
+      .then(parts => {
+        const url = new URL(FILES_ENDPOINT)
+        url.searchParams.set('action', "mpu-complete")
+        url.searchParams.set('key', upItem.key)
+        url.searchParams.set('uploadId', uploadId)
+        return fetch(url, {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          method: 'POST',
+          body: JSON.stringify({ parts })
+        })
+          .then(res => res.headers.get("content-type")?.indexOf("application/json") === -1
+            ? res.text()
+            : res.json()
+          )
+          .then(() => {
+            setStore(storeName, storeKey, { ups: [], isUploaded: true })
+            console.log('store', unwrap(store))
+          })
 
-const FileUploader: Component<{ file: File }> = ({
-  file
+      })
+  )
+  .catch(e => console.log('error:', e))
+
+const FileUploader: Component<{ upItem: UpItem }> = ({
+  upItem
 }) => {
-  const [ups, setUps] = createSignal<Array<number>>([])
-  const [done, setDone] = createSignal<boolean>(false)
   const status = () => {
-    const u = ups()
-    const d = done()
+    const u = upItem.ups
+    const d = upItem.isUploaded
     const accum = u.reduce((acc, v) => acc + v, 0)
     return u.length === 0 && !d
       ? 'initiating'
@@ -171,43 +217,11 @@ const FileUploader: Component<{ file: File }> = ({
           ? '...finalizing'
           : '...' + (accum / u.length * 100).toFixed(0) + '%'
   }
-  getUploadFileParts(file)
-    .then(b => {
-      setUps(b.forms.map(_ => 0))
-      return b
-    })
-    .then(({ key, uploadId, forms }) =>
-      Promise.all(forms.map((formData, i) => xhrUpPart(key, i + 1, formData, uploadId, setUps)))
-        .then(parts => {
-          const url = new URL(FILES_ENDPOINT)
-          url.searchParams.set('action', "mpu-complete")
-          url.searchParams.set('key', key)
-          url.searchParams.set('uploadId', uploadId)
-          return fetch(url, {
-            credentials: 'include',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            method: 'POST',
-            body: JSON.stringify({ parts })
-          })
-        })
-        .then(res => res.headers.get("content-type")?.indexOf("application/json") === -1
-          ? res.text()
-          : res.json()
-        )
-        .then(() => {
-          setDone(true)
-          setUps([])
-        })
-    )
-    .catch(e => console.log('error:', e))
   return (
     <div class='flex flex-col gap-2'>
-      {file.name} {status()}
+      {upItem.key} {status()}
       <div class='flex gap-2 flex-wrap'>
-        <For each={ups()}>{
+        <For each={upItem.ups}>{
           u =>
             <div class={u > 0.9 ? 'h-4 w-4 bg-green-200' : 'h-4 w-4 bg-green-800'} />
         }</For>
@@ -215,17 +229,6 @@ const FileUploader: Component<{ file: File }> = ({
     </div>
   )
 }
-
-type FileRec = {
-  blob: Blob
-  name: string
-  objUrl: string
-  isUploaded: boolean
-}
-
-const [isRecording, setIsRecording] = createSignal(false)
-const [recordings, setRecordings] = createSignal<Array<FileRec>>([])
-
 
 const ctx = new AudioContext()
 let micSource: MediaStreamAudioSourceNode
@@ -258,13 +261,8 @@ recorder.onstart = () => console.log('start recording')
 recorder.ondataavailable = function(e) {
   const d = new Date(Date.now()).toLocaleString('us')
   const name = d.toLocaleString()
-  console.log('data', name, e.data)
-  setRecordings(r => [{
-    blob: e.data,
-    name,
-    objUrl: window.URL.createObjectURL(e.data),
-    isUploaded: false
-  }, ...r])
+  const upItem = { blob: e.data, ups: [], isUploaded: false, objUrl: window.URL.createObjectURL(e.data) }
+  setStore("recordings", name, upItem)
   //  e.data.type
 }
 recorder.onstop = function() {
@@ -295,36 +293,84 @@ export const setupRecorder = () => {
 
 
 const startRecording = () => {
-  setIsRecording(true)
+  setStore("isRecording", true)
   recorder.start()
 }
 
 const stopRecording = () => {
   recorder.stop()
-  setIsRecording(false)
+  setStore("isRecording", false)
 }
 
 const toggleRecording = () => {
   console.log('toggleRecording')
-  if (isRecording()) {
+  if (store.isRecording) {
     stopRecording()
   } else {
     startRecording()
   }
 }
-export const RecItem: Component<{ fileRec: FileRec }> = ({ fileRec }) => {
+
+function getExtension(subtype: string) {
+  if (subtype === 'webm') return 'webm'
+  if (subtype === 'mpeg') return 'mp3'
+  if (subtype === 'ogg') return 'ogg'
+  if (subtype === 'wav') return 'wav'
+  if (subtype === 'aac') return 'aac'
+  if (subtype === 'mp4') return 'mp4'
+  return "webm"
+}
+
+const uploadRecItem = (name: string, blob: Blob, storeKey: string) => {
+  calcDigest(blob)
+    .then((hash) => {
+      const reg = /audio\/([a-zA-Z0-9]*)[;|$]*/
+      const res = reg.exec(blob.type)
+      if (!res?.length || res.length < 2) {
+        alert('Unrecognized mime type in recording.')
+        return
+      }
+      const ext = getExtension(res[1])
+      const key = name + '.' + hash.slice(0, 5) + '.' + ext
+      console.log('setting key on recording', key, blob.type)
+      setStore('recordings', storeKey, "key", key)
+      uploadItem("recordings", storeKey, store.recordings[storeKey])
+    })
+}
+
+export const RecItem: Component<{ upItem: UpItem, storeKey: string }> = ({ upItem, storeKey }) => {
+  const [name, setName] = createSignal<string>('')
   return (
-    <div class="flex flex-col">
-      <div>{fileRec.name}</div>
-      <audio class="flex-grow" controls src={fileRec.objUrl} />
-      <button class="flex-none p-2 rounded ">upload</button>
+    <div class="flex flex-col gap-2 bg-red-600 rounded p-4">
+      <div>{upItem.key}</div>
+      <audio class="flex-grow" controls src={upItem.objUrl} />
+      <Switch fallback={<div>...</div>}>
+        <Match when={upItem.key}>
+          <FileUploader upItem={upItem} />
+        </Match>
+        <Match when={!upItem.key}>
+          <div class="flex gap-2">
+            <input
+              class="flex-grow p-2 rounded bg-gray-100"
+              placeholder="give your recording a name please"
+              value={name()}
+              onInput={(e) => setName(e.currentTarget.value)}
+            >upload</input>
+            <button
+              type="button"
+              class={"flex-none p-2 rounded bg-red-200 " + (name().trim() === '' ? 'cursor-not-allowed' : 'cursor-pointer')}
+              disabled={name().trim() === ''}
+              onClick={() => uploadRecItem(name(), upItem.blob, storeKey)}
+            >upload</button>
+          </div>
+        </Match>
+      </Switch>
     </div>
   )
 }
 
-
 const RecordUI = () => {
-  let canvasRef: HTMLCanvasElement
+  let canvasRef!: HTMLCanvasElement
   let timerOn = false
 
   onMount(() => {
@@ -386,12 +432,16 @@ const RecordUI = () => {
 
   return (
     <div class="flex gap-4">
-      <button type="button" onClick={() => toggleRecording()}>{isRecording() ? 'Stop' : 'Record'}</button>
+      <button
+        type="button"
+        class="bg-red-600 rounded p-4 cursor-pointer"
+        onClick={toggleRecording}>{
+          store.isRecording ? 'Stop' : 'Record'
+        }</button>
       <canvas ref={canvasRef} class='w-full h-32' />
     </div>
   )
 }
-
 
 function createModal() {
   const [open, setOpen] = createSignal(false)
@@ -412,12 +462,14 @@ function createModal() {
         <Portal>
           <Show when={open()}>
             <div class="w-screen h-screen flex justify-center items-center z-2 absolute left-0 top-0" >
-              <div class="w-screen h-screen flex justify-center items-center z-2 absolute left-0 top-0 bg-red-900 opacity-30" />
-              <div class="flex flex-col gap-4 items-center w-full h-4/5 md:w-1/2 z-4 bg-red-400 rounded opacity-100 p-4">
+              <div class="w-screen h-screen flex justify-center items-center z-2 absolute left-0 top-0 bg-red-900 opacity-30" onClick={() => setOpen(false)} />
+              <div class="flex flex-col gap-4 items-center w-full h-full lg:h-4/5 lg:w-2/3 z-4 bg-red-400 rounded opacity-100 p-4">
                 <RecordUI />
                 <button onClick={() => setOpen(false)}>Close</button>
-                <div class="flex flex-col gap-4 max-w-1/2 h-2/3 overflow-y-auto">
-                  <For each={recordings()}>{f => <RecItem fileRec={f} />}</For>
+                <div class="flex flex-col gap-4 w-full lg:w-1/2 h-2/3 overflow-y-auto">
+                  <For each={Object.entries(store.recordings).reverse()}>
+                    {([storeKey, upItem]) => <RecItem storeKey={storeKey} upItem={upItem} />}
+                  </For>
                 </div>
               </div >
             </div >
@@ -427,31 +479,48 @@ function createModal() {
     }
   }
 }
+const { selectFiles } = createFileUploader({ multiple: true, accept: "audio/*" })
+const setFiles = () => selectFiles(([{ source, name, size, file }]) => {
+  calcDigest(file)
+    .then((hash) => {
+      const key = name.replace(/\.([a-zA-Z0-9]*)$/, '.' + hash.slice(0, 5) + '.$1')
+      console.log('new file', key, size)
+      const upItem = { key, blob: file, ups: [], isUploaded: false, objUrl: source }
+      setStore("files", key, upItem)
+      uploadItem("files", key, upItem)
+    })
+
+})
+
+
 function App() {
-  const { setRef: dropzoneRef, files: droppedFiles } = createDropzone({
+  const { setRef: dropzoneRef } = createDropzone({
     onDrop: async files => {
       files.forEach(f => console.log(f));
+      // setStore("files", name, { key: name, blob: file, ups: [], isUploaded: false })
     },
     onDragOver: files => console.log("over", files.length),
   })
   const { Modal, openModal } = createModal()
-  const { files, selectFiles } = createFileUploader()
 
   return (
     <>
       <div ref={dropzoneRef} class="w-screen h-screen flex justify-center items-center" >
         <div class="flex flex-col gap-4 items-center w-full md:w-1/2 ">
           <div class="flex gap-4">
-            <button type="button" class="rounded bg-red-600 text-red-100 p-4" onClick={openModal}>
+            <button type="button" class="rounded bg-red-600 text-red-100 p-4 cursor-pointer" onClick={openModal}>
               Record
             </button>
-            <button type="button" class="rounded bg-red-600 text-red-100 p-4" onClick={() => selectFiles(console.log)}>
+            <button
+              type="button"
+              class="rounded bg-red-600 text-red-100 p-4 cursor-pointer"
+              onClick={setFiles}
+            >
               Upload
             </button>
           </div>
           <div class="flex flex-col gap-4 max-w-1/2">
-            <For each={files()}>{f => <FileUploader file={f.file} />}</For>
-            <For each={droppedFiles()}>{f => <FileUploader file={f.file} />}</For>
+            <For each={Object.values(store.files)}>{f => <FileUploader upItem={f} />}</For>
           </div>
         </div >
       </div >
@@ -460,4 +529,5 @@ function App() {
   )
 }
 
+const root = document.getElementById('root')
 render(() => <App />, root!)
