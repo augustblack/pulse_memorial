@@ -10,7 +10,7 @@ export const getEmailMsg = (c: Context, key: string | null, toAddy: string) => {
   // @ts-ignore
   msg.addMessage({
     contentType: 'text/html',
-    data: `There is a new uploaded file for the Pulse Memorial: <a href="https://assets.pulse.memorial/${key}">https://assets.pulse.memorial/${key}</a>`
+    data: `<html><body><p>There is a new uploaded file for the Pulse Memorial: <a href="https://assets.pulse.memorial/${key}">https://assets.pulse.memorial/${key}</a></p><p>thank you</p></body></html>`
   })
 
   var message = new EmailMessage(
@@ -69,7 +69,7 @@ export const handleUpload = async (c: Context) => {
             const obj = await multipartUpload.complete(completeBody.parts)
             const r1 = await Promise.all([
               c.env.AUGUST_EMAIL.send(getEmailMsg(c, key, "augustblack@gmail.com")),
-              c.env.BROOK_EMAIL.send(getEmailMsg(c, key, "cordylia.vann@colorado.edu"))
+              c.env.BROOK_EMAIL.send(getEmailMsg(c, key, "bvann14@gmail.com"))
             ])
             return Response.json({}, {
               headers: {

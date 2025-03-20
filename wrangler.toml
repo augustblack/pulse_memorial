@@ -7,7 +7,7 @@ main = "src/index.ts"
 assets = { directory = "assets" }
 
 send_email = [
-  {name = "BROOK_EMAIL", destination_address = "cordylia.vann@colorado.edu"},
+  {name = "BROOK_EMAIL", destination_address = "bvann14@gmail.com"},
   {name = "AUGUST_EMAIL", destination_address = "augustblack@gmail.com"}
 ]
 
