@@ -43,6 +43,22 @@ const FILES_ENDPOINT = (WORKERS_URL + '/files').replace(/([^:]\/)\/+/g, "$1")
 console.log('WORKERS_URL', WORKERS_URL)
 console.log('FILES_ENDPOINT', FILES_ENDPOINT)
 
+
+const padit = (n: number) => String(n).padStart(2, '0')
+const floorPad = (n: number) => padit(Math.floor(n))
+
+const formatTime = (pos?: number, subsec = false): string => pos === null || pos === undefined
+  ? ''
+  : isFinite(pos)
+
+    ? pos > 60 * 60
+      ? Math.floor(pos / (60 * 60)) + ':' + floorPad((pos / 60) % 60) + ':' + floorPad(pos % 60)
+      : pos > 1
+        ? Math.floor((pos / 60) % 60) + ':' + floorPad(pos % 60)
+        : subsec ? pos.toPrecision(2) + ' sec' : '0:00'
+    : 'live'
+
+
 export async function calcDigest(file: File | Blob) {
   const reader = file.stream().getReader()
   const shaObj = new jsSHA("SHA-256", "ARRAYBUFFER")
@@ -302,15 +318,6 @@ const stopRecording = () => {
   setStore("isRecording", false)
 }
 
-const toggleRecording = () => {
-  console.log('toggleRecording')
-  if (store.isRecording) {
-    stopRecording()
-  } else {
-    startRecording()
-  }
-}
-
 function getExtension(subtype: string) {
   if (subtype === 'webm') return 'webm'
   if (subtype === 'mpeg') return 'mp3'
@@ -370,16 +377,31 @@ export const RecItem: Component<{ upItem: UpItem, storeKey: string }> = ({ upIte
 }
 
 const RecordUI = () => {
+  const [time, setTime] = createSignal<number>(0)
   let canvasRef!: HTMLCanvasElement
   let timerOn = false
+  let cummulativeTime = 0
+  let laststartTime = 0
+
+  const toggleRecording = () => {
+    if (store.isRecording) {
+      stopRecording()
+      timerOn = false
+    } else {
+      cummulativeTime = 0
+      laststartTime = (new Date()).getTime()
+      setTime(0)
+      startRecording()
+      timerOn = true
+    }
+  }
+
 
   onMount(() => {
     if (!canvasRef) return
     const canvasCtx = canvasRef.getContext('2d')
     const bufferLength = analyser.frequencyBinCount
     const dataArray = new Uint8Array(bufferLength)
-    let cummulativeTime = 0
-    let laststartTime = 0
 
     draw()
     let count = 0
@@ -394,8 +416,8 @@ const RecordUI = () => {
         const currentTime = (new Date()).getTime()
         cummulativeTime += (currentTime - laststartTime)
         laststartTime = currentTime
-        if (count++ > 100) {
-          // setTime(cummulativeTime / 1000)
+        if (count++ > 10) {
+          setTime(cummulativeTime / 1000)
           count = 0
         }
       }
@@ -436,7 +458,7 @@ const RecordUI = () => {
         type="button"
         class="bg-red-600 rounded p-4 cursor-pointer"
         onClick={toggleRecording}>{
-          store.isRecording ? 'Stop' : 'Record'
+          store.isRecording ? `Stop: ${formatTime(time())}` : 'Record'
         }</button>
       <canvas ref={canvasRef} class='w-full h-32' />
     </div>
