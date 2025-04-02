@@ -92,15 +92,15 @@ function App() {
   }
 
   return (
-    <div class="w-screen h-screen bg-red-200 flex justify-center items-center" >
+    <div class="w-screen h-screen flex justify-center items-center" >
       <audio ref={audioEl} style="hidden"></audio>
       <div ref={centerDiv} class="relative">
         <Show when={playState() === 'playing'}>
-          <button class="absolute left-0 top-0 bg-red-600 animate-ping [animation-duration:_4s] rounded-full w-full h-full z-0 scale-70" />
+          <button class="absolute left-0 top-0 bg-primary animate-ping [animation-duration:_4s] rounded-full w-full h-full z-0 scale-70" />
         </Show>
         <button
           ref={playButton}
-          class="absolute left-0 top-0 bg-red-600 text-red-900 p-4 rounded-full w-full h-full z-10 cursor-pointer"
+          class="absolute left-0 top-0 bg-primary text-base-content p-4 rounded-full w-full h-full z-10 cursor-pointer"
           onClick={playAudio}>
           {
             playState() === 'playing'
