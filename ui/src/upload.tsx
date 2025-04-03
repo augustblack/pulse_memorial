@@ -3,12 +3,14 @@ import { render } from 'solid-js/web'
 import { For, Switch, Match, createSignal, onMount } from 'solid-js'
 import { Component } from 'solid-js'
 import { createDropzone, createFileUploader, fileUploader } from "@solid-primitives/upload"
-import jsSHA from 'jssha'
 import { useUploadContext, UploadProvider, SetUploadStore, UpItem } from './uploadContext'
+import NoSleep from 'nosleep.js'
+import jsSHA from 'jssha'
 
 import './index.css'
 
 fileUploader;
+const noSleep = new NoSleep()
 
 //VITE_WS_URL='http://localhost:8787'
 const WORKERS_URL = import.meta.env.VITE_WS_URL || (window.location.protocol + '//' + window.location.hostname)
@@ -412,9 +414,14 @@ const RecordDialog = () => {
       })
   }
 
+  const closeModal = () => {
+    noSleep.disable()
+  }
+  const clickCloseModal = () => dialogRef.close()
 
   const openModal = () => {
     dialogRef.showModal()
+    noSleep.enable()
     if (store.ctx.state !== 'running') {
       store.ctx.resume()
         .then(() => console.log('ctx resumed'))
@@ -424,27 +431,53 @@ const RecordDialog = () => {
     setupRecorder()
       .catch(console.warn)
   }
-
   return (
     <>
       <button class="btn btn-primary btn-xl" onClick={openModal}>Record</button>
-      <dialog ref={dialogRef} class="modal rounded-lg">
+
+      <dialog ref={dialogRef} class="modal" onClose={closeModal}>
         <div class="modal-box bg-base-200 p-0">
-          <form method="dialog" class="flex flex-row-reverse gap-1 w-full">
-            {/* if there is a button in form, it will close the modal */}
-            <button class="btn btn-sm btn-circle btn-ghost right-0 top-0">✕</button>
-          </form>
+          <div class="flex flex-row-reverse gap-1 w-full">
+            <button class="btn btn-sm btn-circle btn-ghost right-0 top-0" onClick={clickCloseModal}>✕</button>
+          </div >
           <div class="flex flex-col gap-4 w-full h-2/3 overflow-y-auto p-4 pt-0">
             <RecordUI />
             <For each={Object.entries(store.recordings).reverse()}>
               {([storeKey, upItem]) => <RecItem storeKey={storeKey} upItem={upItem} />}
             </For>
           </div>
+        </div >
 
-        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button>close</button>
+        </form>
       </dialog>
     </>
   )
+  /*
+return (
+<>
+        <button class="btn btn-primary btn-xl" onClick={openModal}>Record</button>
+        <dialog ref={dialogRef} class="modal" onClose={closeModal}>
+          <div class="modal-box bg-base-200 p-0">
+            <div class="flex flex-row-reverse gap-1 w-full">
+              <button class="btn btn-sm btn-circle btn-ghost right-0 top-0">✕</button>
+            </div >
+            <div class="flex flex-col gap-4 w-full h-2/3 overflow-y-auto p-4 pt-0">
+              <RecordUI />
+              <For each={Object.entries(store.recordings).reverse()}>
+                {([storeKey, upItem]) => <RecItem storeKey={storeKey} upItem={upItem} />}
+              </For>
+            </div>
+          </div >
+            <form method="dialog" class="modal-backdrop">
+              <button>close</button>
+            </form>
+
+        </dialog >
+      </>
+      )
+      */
 }
 function App() {
 
