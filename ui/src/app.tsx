@@ -106,13 +106,13 @@ function App() {
           <div class="flex flex-col gap-4 w-full h-2/3 overflow-y-auto p-4 xl:p-6 pt-0">
             <div><b>Pulse Memorial</b> is a living queer cyber memorial honoring the 49 lives lost in the 2016 Pulse nightclub shooting in Orlando.</div>
 
-            <div>This memorial features a 24/7 web broadcast of 8 inidividual audio channels. Each listener receives one channel on their mobile device, creating a shared, moving multi-channel acoustic environment.</div>
+            <div>This memorial features a 24/7 web broadcast of 8 individual audio channels. Each listener receives one channel on their mobile device, creating a shared, moving multi-channel acoustic environment.</div>
 
             <div>For the full experience, listen together with seven or more participants in the same setting.</div>
 
             <div>Pulse Memorial is a project by artists <a href="https://brookportfolio.com/" class="font-semibold" target="_blank">brook vann</a>, <a href="https://www.betseybiggs.org/" class="font-semibold" target="_blank">betsey biggs</a>, and <a href="https://august.black/" class="font-semibold" target="_blank">august black</a>. We are currently expanding the composition as an open system to include queer voice recordings across 49 channels.
             </div>
-            <div>Thank you for listening and taking time to remember.</div>
+            <div>Thank you for listening and taking a moment to remember.</div>
           </div>
         </div>
         <form method="dialog" class="modal-backdrop">
@@ -138,7 +138,7 @@ function App() {
           }
         </button>
       </div >
-      <button class="absolute bottom-2 left-2 w-12 h-12 btn btn-ghost p-0" onClick={openModal}>
+      <button class="absolute left-2 bottom-2 w-12 h-12 btn btn-ghost" onClick={openModal}>
         <svg id="infosvg" xmlns="http://www.w3.org/2000/svg" class="w-full h-full" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
           <path d="M0 0h24v24H0V0z" fill="none"></path>
           <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
