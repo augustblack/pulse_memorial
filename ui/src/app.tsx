@@ -103,16 +103,13 @@ function App() {
           <div class="flex flex-row-reverse gap-1 w-full">
             <button class="btn btn-sm btn-circle btn-ghost right-0 top-0" onClick={clickCloseModal}>✕</button>
           </div >
-          <div class="flex flex-col gap-4 w-full h-2/3 overflow-y-auto p-4 xl:p-6 pt-0">
-            <div><b>Pulse Memorial</b> is a living queer cyber memorial honoring the 49 lives lost in the 2016 Pulse nightclub shooting in Orlando.</div>
-
-            <div>This memorial features a 24/7 web broadcast of 8 individual audio channels. Each listener receives one channel on their mobile device, creating a shared, moving multi-channel acoustic environment.</div>
+          <div class="flex flex-col gap-4 w-full h-2/3 overflow-y-auto p-4 xl:p-6 pt-0 text-md md:text-lg lg:text-xl">
+            <div><b>Pulse Memorial</b> is a living queer cyber memorial honoring the 49 lives lost in the 2016 Pulse nightclub shooting in Orlando. This memorial features a 24/7 web broadcast of 8 individual audio channels. Each listener receives one channel on their mobile device, creating a shared, moving multi-channel acoustic environment.</div>
 
             <div>For the full experience, listen together with seven or more participants in the same setting.</div>
 
-            <div>Pulse Memorial is a project by artists <a href="https://brookportfolio.com/" class="font-semibold" target="_blank">brook vann</a>, <a href="https://www.betseybiggs.org/" class="font-semibold" target="_blank">betsey biggs</a>, and <a href="https://august.black/" class="font-semibold" target="_blank">august black</a>. We are currently expanding the composition as an open system to include queer voice recordings across 49 channels.
+            <div>Thank you for listening and taking a moment to remember - <a href="https://brookportfolio.com/" class="font-semibold" target="_blank">brook vann</a>, <a href="https://www.betseybiggs.org/" class="font-semibold" target="_blank">betsey biggs</a>, and <a href="https://august.black/" class="font-semibold" target="_blank">august black</a>.
             </div>
-            <div>Thank you for listening and taking a moment to remember.</div>
           </div>
         </div>
         <form method="dialog" class="modal-backdrop">
