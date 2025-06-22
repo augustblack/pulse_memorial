@@ -96,7 +96,7 @@ function App() {
   const openModal = () => dialogRef.showModal()
 
   return (
-    <div class="w-screen h-screen flex justify-center items-center relative" >
+    <div class="w-full h-full flex justify-center items-center relative" >
       <audio ref={audioEl} style="hidden"></audio>
       <dialog ref={dialogRef} class="modal" open onClose={playAudio}>
         <div class="modal-box bg-base-200 p-0 w-3/4 max-w-5xl">
