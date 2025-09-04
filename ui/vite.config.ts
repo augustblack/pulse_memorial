@@ -16,6 +16,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         upload: resolve(__dirname, 'upload/index.html'),
         admin: resolve(__dirname, 'admin/index.html'),
+        editor: resolve(__dirname, 'editor/index.html'),
       },
     },
   },
