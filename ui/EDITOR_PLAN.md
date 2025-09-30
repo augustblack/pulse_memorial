@@ -4,71 +4,35 @@
 Create a minimal multi-track audio editor for the Pulse Memorial project with:
 - 49 tracks (representing the 49 victims)
 - 3-hour timeline duration
-- Drag-and-drop audio file upload
-- Timeline-based audio positioning
+- Timeline-based audio positioning and dragging
+- Audio clips can overlap on tracks (this is allowed and desired)
 - Vertical track arrangement
 
 ## Architecture Decisions
 
 ### Entry Point Setup
+✅ **COMPLETED - Phase 1**
 - Add `editor` entry point to `vite.config.ts` rollupOptions
 - Create `ui/editor/index.html` following existing pattern
 - Create `ui/src/editor.tsx` as main component
 
 ### Canvas vs DOM Approach Analysis
 
-**Canvas Approach Pros:**
-- Better performance with 49 tracks
-- Smooth waveform rendering
-- Precise pixel-level positioning
-- Custom drawing for timeline markers
-- Better for complex audio visualizations
-
-**Canvas Approach Cons:**
-- More complex drag-and-drop implementation
-- Accessibility challenges
-- Custom UI controls needed
-- More complex hit detection
-
-**DOM Approach Pros:**
-- Leverages existing Tailwind/DaisyUI styling
-- Native drag-and-drop API support
-- Better accessibility
-- Easier to integrate with existing upload system
-- Simpler event handling
-
-**DOM Approach Cons:**
-- Potential performance issues with 49 tracks
-- Less precise positioning
-- CSS limitations for complex layouts
-
 **Recommendation: Hybrid Approach**
 - Use DOM for track structure and controls
-- Use Canvas for waveform visualization within each track
+- Use Canvas for waveform visualization within each track (Phase 4+)
 - Use Web Audio API for audio processing and playback
 
 ### Technical Architecture
-
-#### Component Structure
-```
-EditorApp (main container)
-├── Timeline (horizontal time ruler)
-├── TrackList (49 tracks)
-│   └── Track (individual track)
-│       ├── TrackHeader (track number, controls)
-│       ├── TrackCanvas (waveform visualization)
-│       └── AudioClips (positioned audio segments)
-└── PlaybackControls (play/pause/seek)
-```
 
 #### Data Models
 ```typescript
 type AudioClip = {
   id: string
-  audioUrl: string
-  startTime: number    // seconds in timeline
-  duration: number     // clip duration
-  trackIndex: number   // 0-48
+  audioBuffer: AudioBuffer    // Web Audio API buffer
+  startTime: number          // seconds in timeline
+  duration: number           // clip duration
+  trackIndex: number         // 0-48
   waveformData?: Float32Array
 }
 
@@ -83,38 +47,77 @@ type EditorState = {
 
 ## Implementation Strategy
 
-### Phase 1: Basic Structure
-1. Create editor entry point and HTML
-2. Set up basic component structure with 49 empty tracks
-3. Implement timeline ruler (0-3 hours)
-4. Add horizontal and vertical zoom controls
-5. Add horizontal scrolling for timeline
+### ✅ Phase 1: Basic Structure - COMPLETED
+1. ✅ Create editor entry point and HTML
+2. ✅ Set up basic component structure with 49 empty tracks
+3. ✅ Implement timeline ruler (0-3 hours) with staggered time markers
+4. ✅ Add horizontal and vertical zoom controls
+5. ✅ Add horizontal scrolling with position preservation during zoom
+6. ✅ Clean layout with proper spacing and margins
 
-### Phase 2: Audio Upload Integration
-1. Integrate existing upload functionality from `upload.tsx`
-2. Create drag-and-drop zone for each track
-3. Upload audio files to R2 using existing `uploadItem` function
-4. Display audio clips as simple colored rectangles (no waveforms yet)
+### Phase 2: Test Audio Generation & Basic Playback
+1. Create Web Audio API context and utilities
+2. Generate 5 test audio buffers with different characteristics:
+   - White noise (random length 5-20 seconds)
+   - 220Hz sine wave (random length 5-20 seconds)  
+   - 220Hz triangle wave (random length 5-20 seconds)
+   - 440Hz sine wave (random length 5-20 seconds)
+   - 440Hz triangle wave (random length 5-20 seconds)
+3. Auto-place test clips on tracks 1-5 at random start times (0-10 seconds)
+4. Display audio clips as colored rectangles on tracks
+5. Add play/pause button to top controls
+6. Implement playhead (vertical line) that moves in sync with playback time
+7. Basic playback system that plays all clips at their scheduled times
+8. Audio mixing for overlapping clips during playback
 
-### Phase 3: Timeline Positioning
+### Phase 3: Audio Clip Positioning & Dragging
 1. Implement horizontal dragging of audio clips within tracks
-2. Snap-to-grid functionality for precise positioning
-3. Visual feedback during drag operations
-4. Prevent clips from overlapping
+2. Allow clips to overlap on tracks (this is intentional)
+3. Implement vertical dragging between tracks
+4. Visual feedback during drag operations
+5. Snap-to-grid functionality for precise positioning
+6. Update clip startTime and trackIndex during drag operations
+7. Update playback system to reflect dragged clip positions
 
-### Phase 4: Vertical Track Movement
-1. Implement vertical dragging between tracks
-2. Visual indicators for valid drop zones
-3. Update trackIndex when clips move between tracks
-
-### Phase 5: Waveforms & Polish
-1. Generate waveform data using Web Audio API
+### Phase 4: Waveform Visualization
+1. Generate waveform data from AudioBuffers using Web Audio API
 2. Replace colored rectangles with canvas-based waveform visualization
-3. Web Audio API based playback system
-4. Mix all tracks in real-time during playback
-5. Export functionality to render final audio
+3. Optimize waveform rendering for performance
+
+### Phase 5: Audio Upload Integration (Final Phase)
+1. Integrate existing upload functionality from `upload.tsx`
+2. Convert uploaded files to AudioBuffers
+3. Upload processed audio to R2 using existing `uploadItem` function
+4. Load and manage user audio files
+
+### Phase 6: Advanced Playback & Export
+1. Enhanced playback controls (seek, stop, loop)
+2. Individual track mute/solo controls
+3. Volume controls per track
+4. Export functionality to render final audio
 
 ## Technical Considerations
+
+### Phase 2 Specific - Test Audio Generation
+```javascript
+// Example test audio generation
+const generateSineWave = (frequency: number, duration: number, sampleRate: number = 44100) => {
+  const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate)
+  const data = buffer.getChannelData(0)
+  
+  for (let i = 0; i < data.length; i++) {
+    data[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate)
+  }
+  
+  return buffer
+}
+```
+
+### Phase 3 Specific - Clip Overlap Handling
+- Audio clips are allowed to overlap on tracks
+- Visual z-index ordering for overlapping clips
+- Drag operations should handle overlapping scenarios
+- Audio mixing during playback will blend overlapping clips
 
 ### Performance Optimizations
 - Virtual scrolling for timeline (only render visible portion)
@@ -122,61 +125,45 @@ type EditorState = {
 - Use `requestAnimationFrame` for smooth animations
 - Debounce drag operations
 
-### File Management
-- Reuse existing R2 upload system from `upload.tsx`
-- Store clip metadata separately from audio files
-- Use existing hash-based naming convention
-
 ### State Management
 - Use SolidJS stores for reactive state
 - Consider persistence to localStorage for draft sessions
 - Undo/redo stack for user actions
 
 ### Audio Processing
-- Web Audio API for waveform analysis
-- Pre-process audio files for waveform visualization
-- Support common audio formats (mp3, wav, ogg, aac)
-
-### Vertical Zoom Implementation
-- Use Tailwind height classes for track sizing
-- Zoom levels: `h-16` (default), `h-12`, `h-8`, `h-4`, `h-2` (most zoomed out)
-- For extreme zoom out, use arbitrary values: `h-[8px]`, `h-[4px]`
-- Store current zoom level in state as Tailwind class string
-- Apply same height class to all 49 tracks simultaneously
+- Web Audio API for all audio operations
+- Support for overlapping audio clip playback
+- Real-time audio mixing capabilities
 
 ## UI/UX Design
 
 ### Timeline Layout
+✅ **COMPLETED**
 - Variable height per track with vertical zoom
-- Horizontal scrollbar for 3-hour timeline
-- Dual zoom controls:
-  - Horizontal zoom (pixels per second)
-  - Vertical zoom (track height using Tailwind classes)
-- Time ruler with second/minute markers
+- Horizontal scrollbar for 3-hour timeline with position preservation
+- Dual zoom controls (horizontal: 1-20 px/s, vertical: 5 height options)
+- Staggered time markers (odd/even track pattern)
 
-### Track Design
-- Track number indicator (1-49)
-- Mute/solo buttons per track
-- Volume fader per track
-- Visual waveform in canvas
-- Drag handles on audio clips
+### Audio Clip Design
+- Colored rectangles initially (Phase 3)
+- Waveform visualization later (Phase 4)
+- Drag handles and visual feedback
+- Support for overlapping display
 
 ### Responsive Considerations
-- Minimum viewport width for usability
-- Collapsible track controls on smaller screens
 - Touch-friendly drag operations
+- Minimum viewport width for usability
 
 ## Integration Points
 
-### Existing Codebase
-- Reuse `uploadItem` function from `upload.tsx`
-- Reuse `calcDigest` for file hashing
-- Leverage existing R2 configuration
-- Use existing Tailwind/DaisyUI theming
+### Audio Context Setup
+- Create dedicated EditorContext for audio operations
+- Web Audio API context management
+- AudioBuffer utilities and management
 
-### Audio Context
-- Extend existing `UploadContext` or create separate `EditorContext`
-- Share Web Audio API setup patterns
-- Reuse audio processing utilities
+### Future Integration (Phase 5)
+- Reuse existing R2 upload system from `upload.tsx`
+- Leverage existing Tailwind/DaisyUI theming
+- Use existing hash-based naming convention
 
-This plan provides a solid foundation for building a minimal but functional multi-track audio editor that integrates well with the existing Pulse Memorial codebase while maintaining the project's functional programming and camelCase conventions.
+This revised plan focuses on building core functionality with test audio first, then adding upload capabilities as the final step. The overlap-friendly design supports complex audio layering scenarios.

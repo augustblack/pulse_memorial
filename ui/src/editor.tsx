@@ -1,5 +1,6 @@
 import { render } from 'solid-js/web'
-import { For, createSignal } from 'solid-js'
+import { For, createSignal, createEffect } from 'solid-js'
+import { AudioProvider, useAudioContext, AudioClip } from './audioContext'
 import './index.css'
 
 const TOTAL_TRACKS = 49
@@ -21,7 +22,27 @@ type EditorState = {
   isPlaying: boolean
 }
 
+const AudioClipComponent = (props: { clip: AudioClip, zoom: number }) => (
+  <div
+    class="absolute top-1 rounded px-1 text-xs text-white font-medium pointer-events-auto cursor-move"
+    style={{
+      left: `${props.clip.startTime * props.zoom}px`,
+      width: `${props.clip.duration * props.zoom}px`,
+      'background-color': props.clip.color,
+      'min-width': '20px',
+      height: 'calc(100% - 8px)'
+    }}
+    title={`${props.clip.name} (${props.clip.duration.toFixed(1)}s)`}
+  >
+    {props.clip.name}
+  </div>
+)
+
 const Track = (props: { trackNumber: number, height: string, zoom: number, showMarkers?: boolean }) => {
+  const { state } = useAudioContext()
+
+  // Get clips for this track
+  const trackClips = () => state.clips.filter(clip => clip.trackIndex === props.trackNumber - 1)
   const timeMarkers = () => {
     const markers = []
     const pixelsPerSecond = props.zoom
@@ -71,7 +92,11 @@ const Track = (props: { trackNumber: number, height: string, zoom: number, showM
             </div>
           )}</For>
         ) : null}
-        {/* Audio clips will go here */}
+
+        {/* Audio clips */}
+        <For each={trackClips()}>{clip => (
+          <AudioClipComponent clip={clip} zoom={props.zoom} />
+        )}</For>
       </div>
 
     </div>
@@ -79,13 +104,64 @@ const Track = (props: { trackNumber: number, height: string, zoom: number, showM
 }
 
 
+const PlaybackControls = () => {
+  const { state, setState } = useAudioContext()
+
+  const togglePlayback = () => {
+    if (!state.audioContext) {
+      console.log('No audio context available')
+      return
+    }
+
+    console.log('Toggle playback:', state.isPlaying ? 'stopping' : 'starting')
+    console.log('Current time:', state.currentTime)
+    console.log('Audio context time:', state.audioContext.currentTime)
+    console.log('Clips:', state.clips)
+
+    if (state.isPlaying) {
+      // Stop playback
+      setState('isPlaying', false)
+    } else {
+      // Start playback - ensure audio context is resumed
+      if (state.audioContext.state === 'suspended') {
+        state.audioContext.resume().then(() => {
+          console.log('Audio context resumed')
+        })
+      }
+
+      // Reset to beginning and start playback
+      setState('currentTime', 0)
+      setState('isPlaying', true)
+      setState('playStartTime', state.audioContext.currentTime)
+      setState('timelineStartTime', 0)
+    }
+  }
+
+  return (
+    <div class="flex items-center gap-2">
+      <button
+        class="btn btn-primary btn-sm"
+        onClick={togglePlayback}
+        disabled={!state.audioContext}
+      >
+        {state.isPlaying ? 'Pause' : 'Play'}
+      </button>
+      <span class="text-sm">
+        {Math.floor(state.currentTime / 60)}:{Math.floor(state.currentTime % 60).toString().padStart(2, '0')}
+      </span>
+    </div>
+  )
+}
+
 const ZoomControls = (props: {
   horizontalZoom: number
   verticalZoom: string
   onHorizontalZoom: (zoom: number) => void
   onVerticalZoom: (zoom: string) => void
 }) => (
-  <div class="flex gap-8 p-2">
+  <div class="flex gap-8 p-2 items-center">
+    <PlaybackControls />
+
     <div class="flex items-center gap-2">
       <span class="flex-none text-sm">H Zoom:</span>
       <input
@@ -113,10 +189,35 @@ const ZoomControls = (props: {
   </div>
 )
 
+const Playhead = (props: { zoom: number }) => {
+  const { state } = useAudioContext()
+
+  let leftPosition = state.currentTime * props.zoom + 16 // 16px offset to match track ml-4 margin
+
+  createEffect(() => {
+    leftPosition = state.currentTime * props.zoom + 16 // 16px offset to match track ml-4 margin
+  })
+
+  console.log('Playhead position:', {
+    currentTime: state.currentTime,
+    zoom: props.zoom,
+    leftPosition: leftPosition
+  })
+
+  return (
+    <div
+      class="absolute top-0 w-0.5 bg-red-500 pointer-events-none z-30"
+      style={{
+        left: `${leftPosition}px`,
+        height: '100%'
+      }}
+    />
+  )
+}
+
 const EditorApp = () => {
   const [horizontalZoom, setHorizontalZoom] = createSignal(5) // 5 pixels per second
   const [verticalZoom, setVerticalZoom] = createSignal('h-8')
-  const [playheadPosition, setPlayheadPosition] = createSignal(0)
 
   let scrollContainer!: HTMLDivElement
 
@@ -126,13 +227,13 @@ const EditorApp = () => {
   const handleHorizontalZoomChange = (newZoom: number) => {
     // Get current scroll position before zoom change
     const currentScrollLeft = scrollContainer.scrollLeft
-    
+
     // Convert current pixel position to time (seconds), accounting for left margin
     const currentTime = Math.max(0, (currentScrollLeft - 32) / horizontalZoom())
-    
+
     // Update zoom
     setHorizontalZoom(newZoom)
-    
+
     // Recalculate pixel position with new zoom and restore scroll position
     const newScrollLeft = currentTime * newZoom + 32
     scrollContainer.scrollLeft = newScrollLeft
@@ -161,6 +262,8 @@ const EditorApp = () => {
             />
           )}</For>
 
+          {/* Playhead */}
+          <Playhead zoom={horizontalZoom()} />
         </div>
       </div>
     </div>
@@ -168,4 +271,8 @@ const EditorApp = () => {
 }
 
 const root = document.getElementById('root')
-render(() => <EditorApp />, root!)
+render(() => (
+  <AudioProvider>
+    <EditorApp />
+  </AudioProvider>
+), root!)
