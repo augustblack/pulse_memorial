@@ -15,45 +15,28 @@ const VERTICAL_ZOOM_LEVELS = [
   { value: 'h-2', label: 'Minimal' }
 ]
 
-type EditorState = {
-  horizontalZoom: number
-  verticalZoom: string
-  playheadPosition: number
-  isPlaying: boolean
-}
-
 const AudioClipComponent = (props: { clip: AudioClip, zoom: number }) => (
   <div
-    class="absolute top-1 rounded px-1 text-xs text-white font-medium pointer-events-auto cursor-move"
+    class="absolute top-0 text-xs text-white font-medium pointer-events-auto cursor-move h-full"
     style={{
       left: `${props.clip.startTime * props.zoom}px`,
       width: `${props.clip.duration * props.zoom}px`,
       'background-color': props.clip.color,
-      'min-width': '20px',
-      height: 'calc(100% - 8px)'
     }}
     title={`${props.clip.name} (${props.clip.duration.toFixed(1)}s)`}
   >
     {props.clip.name}
   </div>
 )
-
-const Track = (props: { trackNumber: number, height: string, zoom: number, showMarkers?: boolean }) => {
+const Markers = (props: { vzoom: string, hzoom: number, showMarkers?: boolean }) => {
   const { state } = useAudioContext()
 
-  // Get clips for this track
-  const trackClips = () => state.clips.filter(clip => clip.trackIndex === props.trackNumber - 1)
   const timeMarkers = () => {
     const markers = []
-    const pixelsPerSecond = props.zoom
-
-    // Odd tracks: 0, 10, 20, 30 minutes
-    // Even tracks: 5, 15, 25, 35 minutes
-    const isOddTrack = props.trackNumber % 2 === 1
-    const startOffsetMinutes = isOddTrack ? 0 : 5
+    const pixelsPerSecond = props.hzoom
 
     // Mark every 10 minutes starting from the offset (include 3:00:00 endpoint)
-    for (let minutes = startOffsetMinutes; minutes <= 180; minutes += 10) {
+    for (let minutes = 0; minutes <= 180; minutes += 10) {
       const seconds = minutes * 60
       const x = seconds * pixelsPerSecond
       const hours = Math.floor(minutes / 60)
@@ -68,37 +51,43 @@ const Track = (props: { trackNumber: number, height: string, zoom: number, showM
     return markers
   }
 
+
   return (
-    <div class={` ${props.height} relative`} style={{ 'min-width': `${TIMELINE_SECONDS * props.zoom + 32}px` }}>
+    <div class={` ${props.vzoom} bg-blue-100  mb-1 z-10`}
+      style={{
+        width: `${TIMELINE_SECONDS * props.hzoom}px`,
+        top: "-14px"
+      }}
 
-      {/* Track content area with original background */}
-      <div
-        class="bg-base-100 h-full relative m-0 ml-4 mr-8 p-0"
-        style={{ width: `${TIMELINE_SECONDS * props.zoom}px` }}
-      >
-        {props.showMarkers ? (
-          <For each={timeMarkers()}>{marker => (
-            <div
-              class="absolute text-xs pointer-events-none top-0"
-              style={{ left: `${marker.x}px` }}
-            >
-              <div class="w-px bg-base-content/40 h-4"></div>
-              <span
-                class="absolute text-base-content/60 px-1 whitespace-nowrap top-0"
-                style={{ left: '4px' }}
-              >
-                {marker.label}
-              </span>
-            </div>
-          )}</For>
-        ) : null}
-
-        {/* Audio clips */}
-        <For each={trackClips()}>{clip => (
-          <AudioClipComponent clip={clip} zoom={props.zoom} />
+    >
+      {props.showMarkers ? (
+        <For each={timeMarkers()}>{marker => (
+          <div
+            class="absolute text-xs pointer-events-none top-0"
+            style={{ left: `${marker.x}px` }}
+          >
+            {marker.label}
+          </div>
         )}</For>
-      </div>
+      ) : null}
+    </div>
+  )
+}
 
+
+const Track = (props: { trackNumber: number, vzoom: string, hzoom: number, showMarkers?: boolean }) => {
+  const { state } = useAudioContext()
+
+  const trackClips = () => state.clips.filter(clip => clip.trackIndex === props.trackNumber - 1)
+
+  return (
+    <div class={` ${props.vzoom} relative bg-base-300  mb-1`}
+      style={{ width: `${TIMELINE_SECONDS * props.hzoom}px` }}
+    >
+      {/* Audio clips */}
+      <For each={trackClips()}>{clip => (
+        <AudioClipComponent clip={clip} zoom={props.hzoom} />
+      )}</For>
     </div>
   )
 }
@@ -191,26 +180,26 @@ const ZoomControls = (props: {
 
 const Playhead = (props: { zoom: number }) => {
   const { state } = useAudioContext()
-
-  let leftPosition = state.currentTime * props.zoom + 16 // 16px offset to match track ml-4 margin
+  let phRef !: HTMLDivElement
+  let leftPosition = 0
 
   createEffect(() => {
-    leftPosition = state.currentTime * props.zoom + 16 // 16px offset to match track ml-4 margin
-  })
-
-  console.log('Playhead position:', {
-    currentTime: state.currentTime,
-    zoom: props.zoom,
-    leftPosition: leftPosition
+    leftPosition = state.currentTime * props.zoom
+    phRef.style.left = `${leftPosition}px`
+    /*
+    console.log('Playhead position:', {
+      currentTime: state.currentTime,
+      zoom: props.zoom,
+      leftPosition: leftPosition
+    })
+    */
   })
 
   return (
     <div
+      ref={phRef}
       class="absolute top-0 w-0.5 bg-red-500 pointer-events-none z-30"
-      style={{
-        left: `${leftPosition}px`,
-        height: '100%'
-      }}
+      style={{ height: '100%' }}
     />
   )
 }
@@ -248,23 +237,22 @@ const EditorApp = () => {
         onVerticalZoom={setVerticalZoom}
       />
 
-      <div ref={scrollContainer} class="flex-1 overflow-auto">
-        <div
-          class="relative flex flex-col gap-1"
-          style={{ width: `${TIMELINE_SECONDS * horizontalZoom() + 32}px` }}
-        >
-          <For each={trackNumbers()}>{trackNumber => (
-            <Track
-              trackNumber={trackNumber}
-              height={verticalZoom()}
-              zoom={horizontalZoom()}
-              showMarkers={showTimeMarkers()}
-            />
-          )}</For>
 
-          {/* Playhead */}
-          <Playhead zoom={horizontalZoom()} />
-        </div>
+      <div ref={scrollContainer}
+        class="flex-1 overflow-y-auto relative m-4"
+      >
+        <Markers vzoom={verticalZoom()} hzoom={horizontalZoom()} showMarkers={true} />
+        <For each={trackNumbers()}>{trackNumber => (
+          <Track
+            trackNumber={trackNumber}
+            vzoom={verticalZoom()}
+            hzoom={horizontalZoom()}
+            showMarkers={showTimeMarkers()}
+          />
+        )}</For>
+
+        {/* Playhead */}
+        <Playhead zoom={horizontalZoom()} />
       </div>
     </div>
   )

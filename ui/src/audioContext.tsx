@@ -163,8 +163,6 @@ export const AudioProvider = (props: ParentProps) => {
         activeClips: state.activeSourceNodes.size
       })
     }
-
-    // Update current time (this is the only state update in the loop)
     setState('currentTime', newCurrentTime)
 
     // Schedule clips that should start playing
