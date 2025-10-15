@@ -479,6 +479,135 @@ return (
       )
       */
 }
+
+const TextDialog = () => {
+  const [textInput, setTextInput] = createSignal<string>('')
+  const [voiceId, setVoiceId] = createSignal<string>('1oempTd4AdVbMXTwXGLb')
+  const [audioUrl, setAudioUrl] = createSignal<string>('')
+  const [isLoading, setIsLoading] = createSignal<boolean>(false)
+  let dialogRef!: HTMLDialogElement
+
+  const closeModal = () => {
+    noSleep.disable()
+    setTextInput('')
+    if (audioUrl()) {
+      URL.revokeObjectURL(audioUrl())
+      setAudioUrl('')
+    }
+  }
+  const clickCloseModal = () => dialogRef.close()
+
+  const openModal = () => {
+    dialogRef.showModal()
+    noSleep.enable()
+  }
+
+  const handleSubmit = async () => {
+    const text = textInput().trim()
+    if (text === '') return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(WORKERS_URL + '/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ text, voice_id: voiceId() })
+      })
+
+      if (response.ok) {
+        // Check if response is audio
+        const contentType = response.headers.get('Content-Type')
+        if (contentType?.includes('audio')) {
+          const audioBlob = await response.blob()
+          const url = URL.createObjectURL(audioBlob)
+          setAudioUrl(url)
+          console.log('Audio generated successfully')
+        } else {
+          console.log('Non-audio response received')
+        }
+      } else {
+        console.error('Failed to generate audio:', response.status)
+      }
+    } catch (error) {
+      console.error('Error generating audio:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <button class="btn btn-primary btn-xl" onClick={openModal}>Text</button>
+
+      <dialog ref={dialogRef} class="modal" onClose={closeModal}>
+        <div class="modal-box bg-base-200 p-0">
+          <div class="flex flex-row-reverse gap-1 w-full">
+            <button class="btn btn-sm btn-circle btn-ghost right-0 top-0" onClick={clickCloseModal}>✕</button>
+          </div >
+          <div class="flex flex-col gap-4 w-full h-2/3 overflow-y-auto p-4 pt-0">
+            <div class="flex flex-col gap-4 p-4">
+              <label class="floating-label">
+                <span>Voice</span>
+                <select
+                  class="select bg-base-100 w-full"
+                  value={voiceId()}
+                  onChange={(e) => setVoiceId(e.currentTarget.value)}
+                >
+                  <option value="1oempTd4AdVbMXTwXGLb">Pulse-6 - Ma</option>
+                  <option value="HlyKh32Jf2YC5G3m6nSp">Pulse-8 - br</option>
+                  <option value="PM95oPAGQiOSwicBkAKM">Pulse-5 - de</option>
+                  <option value="bc3xKmxFdtlGMxZSJTpJ">Pulse-4 - Na</option>
+                  <option value="h3pRrljMaFBWaThMoUWH">Pulse-7 - h</option>
+                  <option value="n7IAf15stpfCFyev4toS">Pulse-2 - V</option>
+                  <option value="pYg9EmuR9dI8GIzOQddT">Pulse-3 - isa</option>
+                  <option value="qjz0ZBNwjrj7MIhECSVN">Pulse-1 - i</option>
+                </select>
+              </label>
+              <label class="floating-label">
+                <span>Your Message</span>
+                <textarea
+                  class="textarea bg-base-100 min-h-32 w-full p-2"
+                  placeholder="Enter your text message here..."
+                  value={textInput()}
+                  onInput={(e) => setTextInput(e.currentTarget.value)}
+                />
+              </label>
+              <button
+                type="submit"
+                class={"btn btn-primary flex-1 disabled:border disabled:border-2 btn-xl " + (textInput().trim() === '' || isLoading() ? 'cursor-not-allowed' : 'cursor-pointer')}
+                disabled={textInput().trim() === '' || isLoading()}
+                onClick={handleSubmit}
+              >
+                {isLoading() ? (
+                  <>
+                    <span class="loading loading-spinner loading-sm"></span>
+                    Generating...
+                  </>
+                ) : 'Submit'}
+              </button>
+              {audioUrl() && (
+                <div class="flex flex-col gap-2">
+                  <span class="text-sm font-medium">Generated Audio:</span>
+                  <audio class="w-full" controls src={audioUrl()} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div >
+
+        <form method="dialog" class="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+    </>
+  )
+}
+
+
 function App() {
 
   const { store, setStore } = useUploadContext()
@@ -503,6 +632,7 @@ function App() {
             >
               Upload
             </button>
+            <TextDialog />
           </div>
           <div class="flex flex-col gap-4 max-w-1/2">
             <For each={Object.values(store.files)}>{f => <FileUploader upItem={f} />}</For>
