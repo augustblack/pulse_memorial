@@ -498,7 +498,7 @@ const TextDialog = () => {
         if (upItem.objUrl) {
           URL.revokeObjectURL(upItem.objUrl)
         }
-        setStore("recordings", key, undefined)
+        //setStore("recordings", key, undefined)
       }
     })
   }
