@@ -60,8 +60,11 @@ app.post('/tts', async (c) => {
     })
 
     if (!response.ok) {
-      console.error('ElevenLabs API error:', response.status, response.statusText)
-      return c.json({ success: false, error: 'TTS service unavailable' }, 502)
+      console.error('ElevenLabs API error:', response.status, response.statusText, response)
+
+      return response.status === 401
+        ? c.json({ success: false, error: "Not enough credits to process this request. Please wait a few days." }, 502)
+        : c.json({ success: false, error: "Unknown api error: " + response.statusText }, 502)
     }
 
     // Stream the audio response back to the client

@@ -485,11 +485,13 @@ const TextDialog = () => {
   const [voiceId, setVoiceId] = createSignal<string>('1oempTd4AdVbMXTwXGLb')
   const [audioUrl, setAudioUrl] = createSignal<string>('')
   const [isLoading, setIsLoading] = createSignal<boolean>(false)
+  const [error, setError] = createSignal<string>('')
   let dialogRef!: HTMLDialogElement
 
   const closeModal = () => {
     noSleep.disable()
     setTextInput('')
+    setError('')
     if (audioUrl()) {
       URL.revokeObjectURL(audioUrl())
       setAudioUrl('')
@@ -507,6 +509,7 @@ const TextDialog = () => {
     if (text === '') return
 
     setIsLoading(true)
+    setError('')
 
     try {
       const response = await fetch(WORKERS_URL + '/tts', {
@@ -527,12 +530,22 @@ const TextDialog = () => {
           setAudioUrl(url)
           console.log('Audio generated successfully')
         } else {
-          console.log('Non-audio response received')
+          setError('Unexpected response format from server')
         }
       } else {
-        console.error('Failed to generate audio:', response.status)
+        let errorMessage = `Failed to generate audio (${response.status})`
+        try {
+          const errorData = await response.json()
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch {
+          // If we can't parse the error response, use the default message
+        }
+        setError(errorMessage)
       }
     } catch (error) {
+      setError('Network error occurred. Please try again.')
       console.error('Error generating audio:', error)
     } finally {
       setIsLoading(false)
@@ -589,6 +602,11 @@ const TextDialog = () => {
                   </>
                 ) : 'Submit'}
               </button>
+              {error() && (
+                <div class="alert alert-error">
+                  <span>{error()}</span>
+                </div>
+              )}
               {audioUrl() && (
                 <div class="flex flex-col gap-2">
                   <span class="text-sm font-medium">Generated Audio:</span>
