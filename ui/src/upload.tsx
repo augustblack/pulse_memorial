@@ -483,19 +483,24 @@ return (
 const TextDialog = () => {
   const [textInput, setTextInput] = createSignal<string>('')
   const [voiceId, setVoiceId] = createSignal<string>('1oempTd4AdVbMXTwXGLb')
-  const [audioUrl, setAudioUrl] = createSignal<string>('')
   const [isLoading, setIsLoading] = createSignal<boolean>(false)
   const [error, setError] = createSignal<string>('')
+  const { store, setStore } = useUploadContext()
   let dialogRef!: HTMLDialogElement
 
   const closeModal = () => {
     noSleep.disable()
     setTextInput('')
     setError('')
-    if (audioUrl()) {
-      URL.revokeObjectURL(audioUrl())
-      setAudioUrl('')
-    }
+    // Clean up any non-uploaded TTS recordings
+    Object.entries(store.recordings).forEach(([key, upItem]) => {
+      if (key.startsWith('TTS-') && !upItem.isUploaded && !upItem.key) {
+        if (upItem.objUrl) {
+          URL.revokeObjectURL(upItem.objUrl)
+        }
+        setStore("recordings", key, undefined)
+      }
+    })
   }
   const clickCloseModal = () => dialogRef.close()
 
@@ -527,7 +532,19 @@ const TextDialog = () => {
         if (contentType?.includes('audio')) {
           const audioBlob = await response.blob()
           const url = URL.createObjectURL(audioBlob)
-          setAudioUrl(url)
+
+          // Create UpItem for the TTS audio and add to recordings store
+          const timestamp = new Date(Date.now()).toLocaleString('us')
+          const storeKey = `TTS-${timestamp}`
+          const upItem: UpItem = {
+            blob: audioBlob,
+            key: '', // Will be set when user uploads
+            objUrl: url,
+            ups: [],
+            isUploaded: false
+          }
+          setStore("recordings", storeKey, upItem)
+
           console.log('Audio generated successfully')
         } else {
           setError('Unexpected response format from server')
@@ -557,7 +574,7 @@ const TextDialog = () => {
       <button class="btn btn-primary btn-xl" onClick={openModal}>Text</button>
 
       <dialog ref={dialogRef} class="modal" onClose={closeModal}>
-        <div class="modal-box bg-base-200 p-0">
+        <div class="modal-box bg-base-200 p-0 ">
           <div class="flex flex-row-reverse gap-1 w-full">
             <button class="btn btn-sm btn-circle btn-ghost right-0 top-0" onClick={clickCloseModal}>✕</button>
           </div >
@@ -607,12 +624,9 @@ const TextDialog = () => {
                   <span>{error()}</span>
                 </div>
               )}
-              {audioUrl() && (
-                <div class="flex flex-col gap-2">
-                  <span class="text-sm font-medium">Generated Audio:</span>
-                  <audio class="w-full" controls src={audioUrl()} />
-                </div>
-              )}
+              <For each={Object.entries(store.recordings).filter(([key]) => key.startsWith('TTS-')).reverse()}>
+                {([storeKey, upItem]) => <RecItem storeKey={storeKey} upItem={upItem} />}
+              </For>
             </div>
           </div>
         </div >
