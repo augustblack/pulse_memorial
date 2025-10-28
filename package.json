@@ -6,8 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "devold": "wrangler dev src/index.ts",
-    "dev" : "wrangler dev --remote",
-    "build" : "cd ui;bun run build",
+    "dev": "wrangler dev --remote",
+    "build": "cd ui;bun run build",
     "deploy": "wrangler deploy --minify src/index.ts"
   },
   "author": "",
