@@ -186,20 +186,32 @@ const Playhead = (props: { zoom: number }) => {
   createEffect(() => {
     leftPosition = state.currentTime * props.zoom
     phRef.style.left = `${leftPosition}px`
-    /*
-    console.log('Playhead position:', {
-      currentTime: state.currentTime,
-      zoom: props.zoom,
-      leftPosition: leftPosition
+
+    // Set height to match parent container
+    if (phRef.parentElement) {
+      phRef.style.height = `${phRef.parentElement.scrollHeight}px`
+    }
+  })
+
+  // Add resize observer to track parent height changes
+  createEffect(() => {
+    if (!phRef?.parentElement) return
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (phRef.parentElement) {
+        phRef.style.height = `${phRef.parentElement.scrollHeight}px`
+      }
     })
-    */
+
+    resizeObserver.observe(phRef.parentElement)
+
+    return () => resizeObserver.disconnect()
   })
 
   return (
     <div
       ref={phRef}
       class="absolute top-0 w-0.5 bg-red-500 pointer-events-none z-30"
-      style={{ height: '100%' }}
     />
   )
 }
@@ -238,9 +250,8 @@ const EditorApp = () => {
       />
 
 
-      <div ref={scrollContainer}
-        class="flex-1 overflow-y-auto relative m-4"
-      >
+      <div ref={scrollContainer} class="flex-1 overflow-y-auto relative m-4 ">
+
         <Markers vzoom={verticalZoom()} hzoom={horizontalZoom()} showMarkers={true} />
         <For each={trackNumbers()}>{trackNumber => (
           <Track
