@@ -26,3 +26,5 @@ yarn-error.log*
 
 .dev.vars
 assets/**
+CLAUDE.md
+ui/CLAUDE.md
