@@ -29,7 +29,7 @@ const AudioClipComponent = (props: { clip: AudioClip, zoom: number }) => (
   </div>
 )
 const Markers = (props: { vzoom: string, hzoom: number, showMarkers?: boolean }) => {
-  const { state } = useAudioContext()
+  // const { state } = useAudioContext()
 
   const timeMarkers = () => {
     const markers = []
