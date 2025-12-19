@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+html, body {
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+}
+
+
 @plugin "daisyui/theme" {
   name: "pulse";
   default: true;
