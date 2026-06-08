@@ -18,11 +18,16 @@ app.use('/files',
   cors({
     origin: "http://localhost:5173",
     credentials: true
-  }),
+  })
+  /*
+  ,
+
   basicAuth({
     username: 'admin',
     password: 'pulse',
-  }))
+  })
+*/
+)
 app.use('/files',
   /*
   basicAuth({
@@ -32,8 +37,8 @@ app.use('/files',
   handleUpload)
 
 app.use('/tts',
-  cors({ origin: "http://localhost:5173", credentials: true }),
-  basicAuth({ username: 'admin', password: 'pulse', })
+  cors({ origin: "http://localhost:5173", credentials: true })
+  //basicAuth({ username: 'admin', password: 'pulse', })
 )
 
 app.post('/tts', async (c) => {

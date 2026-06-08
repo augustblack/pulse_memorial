@@ -99,7 +99,7 @@ function App() {
     <div class="w-full h-full flex justify-center items-center relative" >
       <audio ref={audioEl} style="hidden"></audio>
       <dialog ref={dialogRef} class="modal" open onClose={playAudio}>
-        <div class="modal-box bg-base-200 p-0 w-3/4 max-w-5xl">
+        <div class="modal-box bg-base-200 p-0 sm:p-1 md:p-2 lg:p-4 landscape:w-6/7 portrait:h-6/7 max-w-5xl">
           <div class="flex flex-row-reverse gap-1 w-full">
             <button class="btn btn-sm btn-circle btn-ghost right-0 top-0" onClick={clickCloseModal}>✕</button>
           </div >
@@ -141,6 +141,14 @@ function App() {
           <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
         </svg>
       </button>
+      <Show when={!isFsEnabled()}>
+        <a href="/upload/">
+          <button class="absolute right-2 bottom-2 w-14 h-12 btn btn-ghost p-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" /></svg>
+          </button>
+        </a>
+      </Show>
+
 
     </div >
   )

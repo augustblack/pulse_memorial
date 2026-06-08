@@ -20,6 +20,7 @@ function stopStream() {
 
 
 function init(channelId, opaqueId, audioEl, setPlayState) {
+  console.log('starting')
   if (!Janus || !Janus.isWebrtcSupported()) {
     window.alert('No WebRTC support... ')
     return

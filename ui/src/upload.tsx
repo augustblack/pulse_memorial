@@ -12,7 +12,7 @@ import './index.css'
 fileUploader;
 const noSleep = new NoSleep()
 
-//VITE_WS_URL='http://localhost:8787'
+// VITE_WS_URL='http://localhost:8787'
 const WORKERS_URL = import.meta.env.VITE_WS_URL || (window.location.protocol + '//' + window.location.hostname)
 const FILES_ENDPOINT = (WORKERS_URL + '/files').replace(/([^:]\/)\/+/g, "$1")
 console.log('WORKERS_URL', WORKERS_URL)
@@ -436,7 +436,7 @@ const RecordDialog = () => {
       <button class="btn btn-primary btn-xl" onClick={openModal}>Record</button>
 
       <dialog ref={dialogRef} class="modal" onClose={closeModal}>
-        <div class="modal-box bg-base-200 p-0">
+        <div class="modal-box bg-base-200 p-0 w-full md:w-5/6 max-w-5xl">
           <div class="flex flex-row-reverse gap-1 w-full">
             <button class="btn btn-sm btn-circle btn-ghost right-0 top-0" onClick={clickCloseModal}>✕</button>
           </div >
@@ -574,12 +574,18 @@ const TextDialog = () => {
       <button class="btn btn-primary btn-xl" onClick={openModal}>Text</button>
 
       <dialog ref={dialogRef} class="modal" onClose={closeModal}>
-        <div class="modal-box bg-base-200 p-0 ">
+        <div class="modal-box bg-base-200 p-0 w-full md:w-5/6 max-w-5xl">
           <div class="flex flex-row-reverse gap-1 w-full">
             <button class="btn btn-sm btn-circle btn-ghost right-0 top-0" onClick={clickCloseModal}>✕</button>
           </div >
-          <div class="flex flex-col gap-4 w-full h-2/3 overflow-y-auto p-4 pt-0">
-            <div class="flex flex-col gap-4 p-4">
+          <div class="flex flex-col gap-4 w-full h-full overflow-y-auto p-4 lg:p-6 pt-0">
+            <div class="flex flex-col gap-4 lg:gap-8 ">
+              <div>
+                Type your contribution below, select a voice, and we will use AI to generate a voice recording.
+              </div>
+              <div class="text-xs">
+                These AI voices were created from recordings by real queer and trans people and allies connected to the Pulse Memorial project. Each voice carries a different tone for remembrance and care.
+              </div>
               <label class="floating-label">
                 <span>Voice</span>
                 <select
@@ -587,14 +593,14 @@ const TextDialog = () => {
                   value={voiceId()}
                   onChange={(e) => setVoiceId(e.currentTarget.value)}
                 >
-                  <option value="1oempTd4AdVbMXTwXGLb">Pulse-6 - Ma</option>
-                  <option value="HlyKh32Jf2YC5G3m6nSp">Pulse-8 - br</option>
-                  <option value="PM95oPAGQiOSwicBkAKM">Pulse-5 - de</option>
-                  <option value="bc3xKmxFdtlGMxZSJTpJ">Pulse-4 - Na</option>
-                  <option value="h3pRrljMaFBWaThMoUWH">Pulse-7 - h</option>
-                  <option value="n7IAf15stpfCFyev4toS">Pulse-2 - V</option>
-                  <option value="pYg9EmuR9dI8GIzOQddT">Pulse-3 - isa</option>
-                  <option value="qjz0ZBNwjrj7MIhECSVN">Pulse-1 - i</option>
+                  <option value="1oempTd4AdVbMXTwXGLb" id="voice6">Tender Femme | Grieving, present.</option>
+                  <option value="HlyKh32Jf2YC5G3m6nSp" id="voice8">Resonant Masc | Contemplative, full.</option>
+                  <option value="PM95oPAGQiOSwicBkAKM" id="voice5">Smooth Masc | Reflective, measured.</option>
+                  <option value="bc3xKmxFdtlGMxZSJTpJ" id="voice4">Bright Femme | Hopeful, clear.</option>
+                  <option value="h3pRrljMaFBWaThMoUWH" id="voice7">Neutral | Archival, even.</option>
+                  <option value="n7IAf15stpfCFyev4toS" id="voice2">Warm Femme | Tender, unhurried.</option>
+                  <option value="pYg9EmuR9dI8GIzOQddT" id="voice3">Low Masc | Grounded, steady.</option>
+                  <option value="qjz0ZBNwjrj7MIhECSVN" id="voice1">Soft Femme | Intimate, close.</option>
                 </select>
               </label>
               <label class="floating-label">
@@ -653,8 +659,25 @@ function App() {
 
   return (
     <>
-      <div ref={dropzoneRef} class="w-screen h-screen flex justify-center items-center" >
+      <div ref={dropzoneRef} class="w-screen h-screen flex flex-col items-center gap-4 pt-8 lg:pt-16 relative" >
+        <div class="absolute left-2 top-2 font-medium tracking-wider"><a href="/">pulse.memorial</a></div>
+        <div class="w-full flex flex-col items-center justify-center gap-4 max-w-xl p-4">
+          <div class="font-medium text-xl tracking-wide">To contribute to the Pulse Memorial, please choose one of the following options:</div>
+          <ul class="max-w-lg text-sm">
+            <li>
+              <span class="font-medium">Record</span> — Record your voice directly through the site.
+            </li>
+            <li>
+              <span class="font-medium">Upload</span> — Upload an existing audio file from your device.
+            </li>
+            <li>
+              <span class="font-medium">Text</span> — Write a text contribution and select a voice to translate your words into speech.
+            </li>
+          </ul>
+        </div>
+        <div></div>
         <div class="flex flex-col gap-4 items-center w-full md:w-1/2 ">
+
           <div class="flex gap-4">
             <RecordDialog />
             <button
