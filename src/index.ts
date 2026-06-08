@@ -1,6 +1,5 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { basicAuth } from 'hono/basic-auth'
 import { handleUpload } from './upload'
 export { PulseServer } from './pulseserver'
 
@@ -19,26 +18,12 @@ app.use('/files',
     origin: "http://localhost:5173",
     credentials: true
   })
-  /*
-  ,
-
-  basicAuth({
-    username: 'admin',
-    password: 'pulse',
-  })
-*/
 )
 app.use('/files',
-  /*
-  basicAuth({
-  username: 'admin',
-  password: 'pulse',
-}),*/
   handleUpload)
 
 app.use('/tts',
   cors({ origin: "http://localhost:5173", credentials: true })
-  //basicAuth({ username: 'admin', password: 'pulse', })
 )
 
 app.post('/tts', async (c) => {
