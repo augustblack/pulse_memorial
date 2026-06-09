@@ -661,7 +661,7 @@ function App() {
     <>
       <div ref={dropzoneRef} class="w-screen h-screen flex flex-col items-center gap-4 pt-8 lg:pt-16 relative" >
         <div class="absolute left-2 top-2 font-medium tracking-wider"><a href="/">pulse.memorial</a></div>
-        <div class="w-full flex flex-col items-center justify-center gap-4 max-w-xl p-4">
+        <div class="w-full flex flex-col items-center justify-center gap-4 max-w-2xl p-4">
           <div class="font-medium text-xl tracking-wide">To contribute to the Pulse Memorial, please choose one of the following options:</div>
           <ul class="max-w-lg text-sm">
             <li>
@@ -674,6 +674,7 @@ function App() {
               <span class="font-medium">Text</span> — Write a text contribution and select a voice to translate your words into speech.
             </li>
           </ul>
+          <div class="font-medium text-md ">All submissions are reviewed by our team. Send an email to brook@pulse.memorial to receive confirmation on when your submission is added.</div>
         </div>
         <div></div>
         <div class="flex flex-col gap-4 items-center w-full md:w-1/2 ">
