@@ -659,9 +659,9 @@ function App() {
 
   return (
     <>
-      <div ref={dropzoneRef} class="w-screen h-screen flex flex-col items-center gap-4 pt-8 lg:pt-16 relative" >
+      <div ref={dropzoneRef} class="w-screen h-screen flex flex-col items-center gap-4 pt-10 lg:pt-16 relative" >
         <div class="absolute left-2 top-2 font-medium tracking-wider"><a href="/">pulse.memorial</a></div>
-        <div class="w-full flex flex-col items-center justify-center gap-4 max-w-2xl p-4">
+        <div class="w-full flex flex-col items-center justify-center gap-4 max-w-2xl px-4">
           <div class="font-medium text-xl tracking-wide">To contribute to the Pulse Memorial, please choose one of the following options:</div>
           <ul class="max-w-lg text-sm">
             <li>
